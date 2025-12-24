@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整历史，用于版本管理工具
         
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -29,6 +31,13 @@ jobs:
         
       - name: Build project
         run: npm run build
+
+      - name: Verify build output
+        run: |
+          if [ ! -d "dist" ] || [ -z "$(ls -A dist)" ]; then
+            echo "Build failed: dist directory is empty"
+            exit 1
+          fi
         
       - name: Publish to npm using Trusted Publishing
         run: npm publish --access public
@@ -43,3 +52,4 @@ jobs:
           name: Release ${{ github.ref_name }}
           draft: false
           prerelease: false
+          generate_release_notes: true  # 自动生成发布说明

@@ -1,6 +1,5 @@
 {
   "name": "@aggbond/my-file-preview-mobile",
-  "private": true,
   "version": "1.0.0",
   "publishConfig": {
     "provenance": false,
@@ -9,14 +8,14 @@
   "description": "A file preview plugin supporting PDF, text, HTML and rich text files",
   "main": "dist/ReadFilePopupMobile.umd.js",
   "module": "dist/ReadFilePopupMobile.esm.js",
-  "types": "dist/ReadFilePopupMobile.d.ts",
+  "types": "dist/types/ReadFilePopupMobile.d.ts",
   "unpkg": "dist/ReadFilePopupMobile.umd.min.js",
   "jsdelivr": "dist/ReadFilePopupMobile.umd.min.js",
   "exports": {
     ".": {
-      "types": "./dist/ReadFilePopupMobile.d.ts",
+      "types": "./dist/types/ReadFilePopupMobile.d.ts",
       "import": "./dist/ReadFilePopupMobile.es.js",
-      "require": "./dist/ReadFilePopupMobile.js"
+      "require": "./dist/ReadFilePopupMobile.umd.js"
     }
   },
   "files": [
@@ -27,7 +26,7 @@
   ],
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "vite build",
     "preview": "vite preview",
     "test": "jest",
     "prepublishOnly": "npm run build",
@@ -55,7 +54,8 @@
     "@types/node": "^25.0.3",
     "terser": "^5.44.1",
     "typescript": "~5.9.3",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "vite-plugin-dts": "^4.5.4"
   },
   "dependencies": {
     "@aggbond/my-popup": "^1.0.7"
