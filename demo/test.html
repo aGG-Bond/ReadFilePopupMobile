@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>文件预览插件 Demo</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .section {
+      margin-bottom: 30px;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    #readBox {
+      margin-top: 20px;
+    }
+
+    .pdfsee {
+      color: blue;
+      text-decoration: underline;
+      cursor: pointer;
+      margin: 0 5px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>文件预览插件 Demo</h1>
+
+  <div class="section">
+    <h2>基本功能演示</h2>
+    <button id="openCoerceRead">打开强制阅读弹窗</button>
+    <button id="loadPdfFile">加载PDF文件</button>
+    <button id="loadTxtFile">加载TXT文件</button>
+  </div>
+
+  <div class="section">
+    <h2>文件列表演示</h2>
+    <div id="readBox"></div>
+  </div>
+
+  <script type="module">
+    // 注意：这里需要根据你的实际项目结构调整路径
+    import FilePreview from '/src/ReadFilePopupMobile.js';
+
+    // 创建文件预览实例
+    const filePreview = new FilePreview({
+      // 是否需要绘制阅读文件列表
+      isDrawFileList: true,
+
+      // 是否需要转换文件列表的key名称
+      isConfignFileKeyName: true,
+
+      // 文件key名称映射配置
+      fileKeyNameConfign: {
+        fileTitle: "name",       // 标题字段
+        fileType: "doc_type",    // 文件类型字段
+        filePdfUrl: "pdf_url",   // PDF URL字段
+        fileRichContent: "content_text", // 富文本内容字段
+        fileArr: "com_terms"     // 子文件数组字段
+      },
+
+      // 文件列表配置
+      listObj: {
+        listId: '#readBox',  // 列表容器ID
+        fileList: [
+          {
+            "name": "《用户服务协议》",
+            "doc_type": 1,  // 富文本
+            "pdf_url": "",
+            "com_terms": [],
+            "content_text": "<h2>用户服务协议</h2><p>欢迎使用我们的服务。本协议旨在保护您的权益并明确我们的责任。</p><p><strong>1. 服务内容</strong></p><p>我们提供文件预览服务，支持多种文档格式。</p><p><strong>2. 用户权利</strong></p><p>您有权在遵守法律法规的前提下使用本服务。</p><p><strong>3. 用户义务</strong></p><p>您不得利用本服务从事任何违法活动。</p><p><strong>4. 免责条款</strong></p><p>因不可抗力导致的服务中断，我们不承担责任。</p>"
+          },
+          {
+            "name": "《隐私政策说明》",
+            "doc_type": 1,  // 富文本
+            "pdf_url": "",
+            "com_terms": "",
+            "content_text": "<h2>隐私政策说明</h2><p>我们非常重视您的隐私保护。</p><p><strong>信息收集</strong></p><p>我们会收集必要的浏览信息以改善服务质量。</p><p><strong>信息使用</strong></p><p>收集的信息仅用于提供和优化服务。</p><p><strong>信息安全</strong></p><p>我们采用加密技术保护您的信息安全。</p>"
+          },
+          {
+            "name": "《产品使用指南》",
+            "doc_type": 3,  // 引用文本(多份文件)
+            "pdf_url": "",
+            "com_terms": [
+              {
+                "name": "《基础操作手册》",
+                "pdf_url": "https://example.com/manual.pdf",
+                "disclaimer": "<p>基础操作说明...</p>",
+                "record_num": "C000231309120"
+              }
+            ],
+            "content_text": ""
+          },
+          {
+            "name": "《重要通知》",
+            "doc_type": 2,  // PDF文件
+            "pdf_url": "https://example.com/notification.pdf",
+            "com_terms": "",
+            "content_text": ""
+          }
+        ],
+        fileStyle: {
+          'color': 'blue',
+          'cursor': 'pointer'
+        },
+        isCheckButton: true,  // 列表是否需要复选框
+        isCoerceReadPopup: true,  // 是否启用强制阅读弹窗
+        checkCallBack: (isChecked) => {
+          console.log('复选框状态改变：', isChecked);
+        },
+        checkButtonID: 'ReadFileCheckBox',
+        listText: '我已阅读并同意',
+      },
+
+      // 强制阅读弹窗配置
+      coerceReadList: {
+        confirmText: '已阅读并同意',
+        fileList: [
+          {
+            "name": "《测试文档》",
+            "doc_type": 1,  // 富文本
+            "pdf_url": "",
+            "com_terms": [],
+            "content_text": "<p>这是第一个测试文档的内容。用于验证富文本显示功能。</p><p><strong>重点内容</strong>会以粗体显示。</p>"
+          },
+          {
+            "name": "《免责条款》",
+            "doc_type": 1,  // 富文本
+            "pdf_url": "",
+            "com_terms": "",
+            "content_text": "<p><strong>免责条款</strong></p><p>1. 免责条款内容...</p><p>2. 更多免责说明...</p>"
+          },
+          {
+            "name": "《保险条款》",
+            "doc_type": 3,  // 引用文本(多份文件)
+            "pdf_url": "",
+            "com_terms": [
+              {
+                "name": "雇主责任保险（2023版）条款C000231309120",
+                "pdf_url": "https://example.com/insurance.pdf",
+                "disclaimer": "<p><strong>责任免除</strong></p><p>本保险不承担下列损失或费用的赔偿责任：</p><p>1. 被保险人故意造成的损失；</p><p>2. 战争、军事冲突、暴乱等引起的损失；</p><p>3. 核事故引起的损失；</p><p>4. 被保险人违反法律法规规定从事的活动引起的损失；</p><p>5. 其他法律法规规定的责任免除情形。</p>",
+                "record_num": "C0002313091"
+              }
+            ],
+            "content_text": ""
+          },
+          {
+            "name": "《客户告知书》",
+            "doc_type": 2,  // PDF文件
+            "pdf_url": "https://example.com/information.pdf",
+            "com_terms": "",
+            "content_text": ""
+          }
+        ],
+        fileStyle: {
+          'color': 'red',
+          'font-weight': 'bold'
+        },
+        btnArr: ['同意并继续', '拒绝'],
+        showProgressInButton: false, // 是否在按钮上显示进度，0-不显示，1-显示当前文件进度，2-显示整体进度
+        coerceCallBack: (control, buttonIndex) => {
+          
+          // 在实际应用中，你可以通过 control 参数控制流程
+          console.log('当前文件索引:', control.getCurrentIndex());
+          console.log('是否为最后一个文件:', control.isLastFile());
+          switch (buttonIndex) {
+            case 0:
+              if (control.isLastFile()) {
+                // 最后一个文件，设置复选框为选中状态
+                control.setCheckboxChecked(true);
+
+                // 可以触发复选框的回调
+                const listObj = filePreview.Configns.listObj;
+                if (listObj.checkCallBack) {
+                  listObj.checkCallBack(true);
+                }
+
+                // control.close();
+                alert('已完成所有文件阅读！');
+              } else {
+                // 继续下一个文件
+                control.next();
+
+                const currentIndex = control.getCurrentIndex();
+                const length = control.getFileList().length;
+
+                control.setButtonTitles([`同意并继续(${currentIndex}/${length})`, '拒绝']);
+
+                // 返回false，则不会自动关闭弹窗
+                return false;
+              }
+              break;
+            case 1:
+              alert('用户点击了拒绝');
+
+              break;
+          }
+
+        }
+      },
+
+      // 是否绑定文件点击事件，点击后弹出强制阅读弹窗
+      isBindFileClick: true,
+    });
+
+    // 绑定按钮事件
+    document.getElementById('openCoerceRead').addEventListener('click', () => {
+      filePreview.openCoerceReadPopup();
+    });
+
+    document.getElementById('loadPdfFile').addEventListener('click', () => {
+      // 替换为真实的PDF文件URL
+      filePreview.loadFile('https://example.com/sample.pdf');
+    });
+
+    document.getElementById('loadTxtFile').addEventListener('click', () => {
+      // 替换为真实的TXT文件URL
+      filePreview.loadFile('./123.txt');
+    });
+  </script>
+</body>
+
+</html>

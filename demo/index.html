@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>my-file-preview-plugin</title>
+</head>
+
+<body>
+  <div id="readBox"></div>
+</body>
+<script type="module">
+  import FilePreview from '/src/ReadFilePopupMobile.js';
+
+  const filePreview = new FilePreview({
+    isDrawFileList: true, // 是否需要绘制阅读文件列表
+    isConfignFileKeyName: true, // 是否需要转换文件列表的key名称
+    listObj: {
+      listId: '#readBox',
+      fileList: [
+        {
+          "name": "《用户服务协议》",
+          "doc_type": 1,
+          "pdf_url": "",
+          "com_terms": [],
+          "content_text": "<h2>用户服务协议</h2><p>欢迎使用我们的服务。本协议旨在保护您的权益并明确我们的责任。</p><p><strong>1. 服务内容</strong></p><p>我们提供文件预览服务，支持多种文档格式。</p><p><strong>2. 用户权利</strong></p><p>您有权在遵守法律法规的前提下使用本服务。</p><p><strong>3. 用户义务</strong></p><p>您不得利用本服务从事任何违法活动。</p><p><strong>4. 免责条款</strong></p><p>因不可抗力导致的服务中断，我们不承担责任。</p>"
+        },
+        {
+          "name": "《隐私政策说明》",
+          "doc_type": 1,
+          "pdf_url": "",
+          "com_terms": "",
+          "content_text": "<h2>隐私政策说明</h2><p>我们非常重视您的隐私保护。</p><p><strong>信息收集</strong></p><p>我们会收集必要的浏览信息以改善服务质量。</p><p><strong>信息使用</strong></p><p>收集的信息仅用于提供和优化服务。</p><p><strong>信息安全</strong></p><p>我们采用加密技术保护您的信息安全。</p>"
+        },
+        {
+          "name": "《产品使用指南》",
+          "doc_type": 3,
+          "pdf_url": "",
+          "com_terms": [
+            {
+              "name": "基础操作手册",
+              "pdf_url": "https://xxx.pdf",
+              "disclaimer": "<p>基础操作说明...</p>",
+              "record_num": "C00023130912023112299031"
+            }
+          ],
+          "content_text": ""
+        },
+        {
+          "name": "《高级功能指南》",
+          "doc_type": 1,
+          "pdf_url": "",
+          "com_terms": [],
+          "content_text": "<p>高级功能说明撒打发士大夫阿斯蒂芬撒地方啊撒打发阿斯蒂撒...</p>"
+        },
+        {
+          "name": "《重要通知》",
+          "doc_type": 2,
+          "pdf_url": "https://xxxx.pdf",
+          "com_terms": "",
+          "content_text": ""
+        },
+      ],
+      fileStyle: {
+        'color': 'red',
+        'font-weight': 'bold'
+      },
+      isCheckButton: true, // 列表是否需要复选框
+      isCoerceReadPopup: true,
+      checkCallBack: (isChecked) => {
+        console.log('复选框状态改变：', isChecked);
+      },
+      checkButtonID: 'ReadFileCheckBox',
+      listText: '我已阅读并同意',
+    },
+    coerceReadList: {
+      confirmText: '已阅读并同意',
+      fileList: [
+        {
+          "name": "《测试文档》",
+          "doc_type": 1,
+          "pdf_url": "",
+          "com_terms": [],
+          "content_text": "<p>这是第一个测试文档的内容。用于验证富文本显示功能。</p><p><strong>重点内容</strong>会以粗体显示。</p>"
+        },
+        {
+          "name": "《免责条款》",
+          "doc_type": 1,
+          "pdf_url": "",
+          "com_terms": "",
+          "content_text": "1.免责条款.dsafsadf sdafsdfsdafasdfasdfsdafsdfasdfasdf幅度萨芬士大夫撒旦发射点发生啊打发撒旦发撒打发撒打发士大夫撒啊幅度萨芬</p>"
+        },
+        {
+          "name": "《保险条款》",
+          "doc_type": 3,
+          "pdf_url": "",
+          "com_terms": [
+            {
+              "name": "雇主责任保险（2023版）条款",
+              "pdf_url": "https://xxx.pdf",
+              "disclaimer": "<p><strong>责任免除</strong></p><p>本保险不承担下列损失或费用的赔偿责任：</p><p>1. 被保险人故意造成的损失；</p><p>2. 战争、军事冲突、暴乱等引起的损失；</p><p>3. 核事故引起的损失；</p><p>4. 被保险人违反法律法规规定从事的活动引起的损失；</p><p>5. 其他法律法规规定的责任免除情形。</p>",
+              "record_num": "C000231309"
+            }
+          ],
+          "content_text": ""
+        },
+        {
+          "name": "《特别约定》",
+          "doc_type": 1,
+          "pdf_url": "",
+          "com_terms": [],
+          "content_text": "<p>哈机密哈机密哈机密路都</p>"
+        },
+        {
+          "name": "《客户告知书》",
+          "doc_type": 2,
+          "pdf_url": "https://xxx.pdf",
+          "com_terms": "",
+          "content_text": ""
+        },
+        {
+          "name": "《隐私政策》",
+          "class_type": 99,
+          "doc_type": 2,
+          "pdf_url": "http://xxx.pdf",
+          "com_terms": "",
+          "content_text": ""
+        }
+      ],
+      fileStyle: {
+        'color': 'red',
+        'font-weight': 'bold'
+      },
+      showProgressInButton: 0, // 是否在按钮上显示进度，0-不显示，1-显示当前文件进度，2-显示整体进度
+      btnArr: ['同意并继续', '拒绝'],
+
+      coerceCallBack: (control,buttonIndex) => {
+        switch (buttonIndex) {
+          case 0: // 同意
+            if (control.isLastFile()) {
+              control.setCheckboxChecked(true);
+              // 可以触发复选框的回调
+              const listObj = filePreview.Configns.listObj;
+              if (listObj.checkCallBack) {
+                listObj.checkCallBack(true);
+              }
+              // control.close();
+            } else {
+              // 继续下一个文件
+              control.next();
+              return false;
+            }
+            break;
+          case 1: // 拒绝/取消
+            // 取消选中复选框
+            control.setCheckboxChecked(false);
+            // control.close();
+            break;
+        }
+      },
+    },
+    isBindFileClick: true, // 是否绑定文件点击事件，点击后弹出强制阅读弹窗
+  });
+
+  // filePreview.openCoerceReadPopup();
+  
+  // const filePreview = new FilePreview({});
+
+  // // // 直接加载并显示PDF文件
+  // filePreview.loadFile('/xxx.pdf');
+
+  // // 加载并显示文本文件
+  filePreview.loadFile('./123.txt');
+
+</script>
+
+</html>

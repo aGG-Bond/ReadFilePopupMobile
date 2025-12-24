@@ -1,0 +1,63 @@
+{
+  "name": "@aggbond/my-file-preview-mobile",
+  "private": true,
+  "version": "1.0.0",
+  "publishConfig": {
+    "provenance": false,
+    "access": "public"
+  },
+  "description": "A file preview plugin supporting PDF, text, HTML and rich text files",
+  "main": "dist/ReadFilePopupMobile.umd.js",
+  "module": "dist/ReadFilePopupMobile.esm.js",
+  "types": "dist/ReadFilePopupMobile.d.ts",
+  "unpkg": "dist/ReadFilePopupMobile.umd.min.js",
+  "jsdelivr": "dist/ReadFilePopupMobile.umd.min.js",
+  "exports": {
+    ".": {
+      "import": "./dist/ReadFilePopupMobile.es.js",
+      "require": "./dist/ReadFilePopupMobile.js",
+      "types": "./dist/ReadFilePopupMobile.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "jest",
+    "prepublishOnly": "npm run build",
+    "docs": "typedoc --out docs/api src/"
+  },
+  "keywords": [
+    "files-preview",
+    "pdf",
+    "text",
+    "html",
+    "popup",
+    "mobile"
+  ],
+  "author": "aGG-Bond",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aGG-Bond/ReadFilePopupMobile.git"
+  },
+  "bugs": {
+    "url": "https://github.com/aGG-Bond/ReadFilePopupMobile/issues"
+  },
+  "homepage": "https://github.com/aGG-Bond/ReadFilePopupMobile#readme",
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "terser": "^5.44.1",
+    "typescript": "~5.9.3",
+    "vite": "^7.2.4"
+  },
+  "dependencies": {
+    "@aggbond/my-popup": "^1.0.7"
+  }
+}

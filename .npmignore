@@ -1,0 +1,27 @@
+# 忽略测试文件
+test/
+tests/
+
+# 忽略开发配置
+*.config.js
+*.config.ts
+
+# 忽略文档
+docs/
+
+# 忽略示例
+demo/
+
+# 忽略 Git 相关
+.git/
+.gitignore
+
+# 忽略 IDE 文件
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 忽略环境变量文件
+.env
+.env.local
