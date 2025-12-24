@@ -14,9 +14,9 @@
   "jsdelivr": "dist/ReadFilePopupMobile.umd.min.js",
   "exports": {
     ".": {
+      "types": "./dist/ReadFilePopupMobile.d.ts",
       "import": "./dist/ReadFilePopupMobile.es.js",
-      "require": "./dist/ReadFilePopupMobile.js",
-      "types": "./dist/ReadFilePopupMobile.d.ts"
+      "require": "./dist/ReadFilePopupMobile.js"
     }
   },
   "files": [
