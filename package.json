@@ -7,7 +7,7 @@
   },
   "description": "A file preview plugin supporting PDF, text, HTML and rich text files",
   "main": "dist/ReadFilePopupMobile.umd.js",
-  "module": "dist/ReadFilePopupMobile.esm.js",
+  "module": "dist/ReadFilePopupMobile.es.js",
   "types": "dist/types/ReadFilePopupMobile.d.ts",
   "unpkg": "dist/ReadFilePopupMobile.umd.min.js",
   "jsdelivr": "dist/ReadFilePopupMobile.umd.min.js",
@@ -16,6 +16,10 @@
       "types": "./dist/types/ReadFilePopupMobile.d.ts",
       "import": "./dist/ReadFilePopupMobile.es.js",
       "require": "./dist/ReadFilePopupMobile.umd.js"
+    },
+    "./min": {
+      "import": "./dist/ReadFilePopupMobile.es.min.js",
+      "require": "./dist/ReadFilePopupMobile.umd.min.js"
     }
   },
   "files": [
@@ -26,7 +30,8 @@
   ],
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && npm run minify",
+    "minify": "node scripts/minify.js",
     "preview": "vite preview",
     "test": "jest",
     "prepublishOnly": "npm run build",
