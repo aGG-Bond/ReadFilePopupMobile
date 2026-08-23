@@ -318,13 +318,16 @@ class FilePreview {
    */
   async _initPdfCanvas(url, containerId, loadingBarId) {
     try {
-      const pdfjsLib = this.pdfjsLib || window.pdfjsLib;
+      if (!url || typeof url !== 'string') {
+        throw new Error("PDF URL 不能为空");
+      }
+      const pdfjsLib = this.pdfjsLib;
       if (!pdfjsLib) {
         throw new Error("PDF.js 未加载");
       }
       
       // 加载 PDF 文档
-      const loadingTask = pdfjsLib.getDocument(url);
+      const loadingTask = pdfjsLib.getDocument({ url: url });
       
       // 监听加载进度
       loadingTask.onProgress = (progress) => {
