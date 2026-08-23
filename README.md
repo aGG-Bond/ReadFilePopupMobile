@@ -26,6 +26,8 @@
 - 📋 文件列表自动渲染
 - 🔧 灵活的配置选项
 - 🎨 自定义样式支持
+- 🖼️ Canvas PDF 渲染，适合移动端预览
+- 📦 PDF.js 主文件和 Worker 随 npm 包内置
 
 ## 使用方法
 
@@ -50,7 +52,7 @@ const filePreview = new FilePreview({
 
 ### 浏览器直接引入（UMD 版本 - 推荐）⭐
 
-**最简单的方式，无需任何配置：**
+**最简单的方式：**
 
 ```html
 <!DOCTYPE html>
@@ -64,7 +66,7 @@ const filePreview = new FilePreview({
   <!-- 1. 引入 UMD 版本 -->
   <script src="https://cdn.jsdelivr.net/npm/@aggbond/my-file-preview-mobile@latest/dist/ReadFilePopupMobile.umd.min.js"></script>
   
-  <!-- 2. 直接使用 -->
+  <!-- 2. 直接使用；默认使用 iframe，开启 Canvas 见下方说明 -->
   <script>
     const filePreview = new window.FilePreview({
       // configuration
@@ -116,6 +118,45 @@ const filePreview = new FilePreview({
 - 浏览器无法直接解析这些说明符，需要通过 Import Map 映射到完整的 CDN URL
 - UMD 版本不需要 Import Map，因为所有依赖都已打包在一个文件中
 
+### Canvas PDF 模式
+
+默认情况下 PDF 使用 iframe。移动端或需要避免浏览器直接下载 PDF 时，可以开启 Canvas 渲染：
+
+```js
+const filePreview = new FilePreview({
+  useCanvasRender: true
+});
+```
+
+PDF.js 的 `pdf.min.js` 和 `pdf.worker.min.js` 会随 npm 包一起发布到 `dist` 目录，默认不需要用户单独下载，也不依赖 CDN：
+
+```text
+dist/
+├─ pdf.min.js
+└─ pdf.worker.min.js
+```
+
+也可以使用自动检测移动设备模式：
+
+```js
+const filePreview = new FilePreview({
+  useCanvasRender: "auto"
+});
+```
+
+如果通过 CDN 直接引入插件，建议显式配置 PDF.js 地址。插件主文件、PDF.js 和 Worker 应使用相同的版本：
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/@aggbond/my-file-preview-mobile@1.0.4/dist/ReadFilePopupMobile.umd.min.js"></script>
+<script>
+  const filePreview = new FilePreview({
+    useCanvasRender: true,
+    pdfJsPath: "https://cdn.jsdelivr.net/npm/@aggbond/my-file-preview-mobile@1.0.4/dist/pdf.min.js",
+    pdfWorkerPath: "https://cdn.jsdelivr.net/npm/@aggbond/my-file-preview-mobile@1.0.4/dist/pdf.worker.min.js"
+  });
+</script>
+```
+
 ## 配置选项
 
 ### 基础选项
@@ -129,6 +170,29 @@ const filePreview = new FilePreview({
 | isConfignFileKeyName | boolean | false | 是否需要转换文件key |
 | isDrawFileList | boolean | false | 是否需要绘制阅读文件列表 |
 | isBindFileClick | boolean | false | 是否需要绑定文件点击事件 |
+
+### Canvas 配置
+
+| 参数 | 类型 | 默认值 | 描述 |
+|------|------|--------|------|
+| useCanvasRender | boolean/string | false | `true` 强制启用，`false` 使用 iframe，`"auto"` 自动检测移动设备 |
+| pdfJsPath | string | `"./pdf.min.js"` | PDF.js 主文件地址，可覆盖为本地或 CDN 地址 |
+| pdfWorkerPath | string | `"./pdf.worker.min.js"` | PDF.js Worker 地址，可覆盖为本地或 CDN 地址 |
+| enableMobileDetect | boolean | true | `useCanvasRender` 为 `"auto"` 时是否启用移动设备检测 |
+| mobileKeywords | string[] | 见源码 | 移动设备 User-Agent 关键词 |
+
+Canvas 渲染参数：
+
+```js
+canvasRenderOptions: {
+  scale: 1.5,
+  maxZoom: 3,
+  minZoom: 0.5,
+  enableZoom: true,
+  loadingBarColor: "#29AEEF",
+  backgroundColor: "#ffffff"
+}
+```
 
 
 ### 文件类型配置
@@ -298,7 +362,7 @@ filePreview.loadFile('/path/to/file.txt');
 ### 文件类型支持
 
 - 富文本 (file_type: 1): 直接在弹窗中显示 HTML 内容
-- PDF (file_type: 2): 使用 iframe 预览 PDF 文件
+- PDF (file_type: 2): 默认使用 iframe，也可以使用 Canvas 渲染
 - 引用文本 (file_type: 3): 包含多个子文件的复合文档
 
 ## 核心方法
@@ -322,13 +386,16 @@ judgeFileType(options)
 - 适用于条款、协议等文本内容
 - PDF文件 (type 2)
 
-- 使用 iframe/embed/object 显示 PDF
+- 默认使用 iframe/embed/object 显示 PDF
+- 开启 `useCanvasRender` 后使用 PDF.js Canvas 渲染
 - 支持工具栏控制
 - 引用文本文件 (type 3)
 
 ## 注意事项
-- 使用前需确保引入 @aggbond/my-popup 组件库
-- PDF 文件预览依赖浏览器的 PDF 查看能力
+- npm/UMD 构建已包含 `@aggbond/my-popup`
+- Canvas 模式使用随包发布的 PDF.js 文件，不需要用户额外下载
+- 直接通过 CDN 引入插件时，建议显式配置 `pdfJsPath` 和 `pdfWorkerPath`
+- PDF.js Canvas 模式仍要求 PDF 地址允许跨域访问，或与当前页面同源
 - 对于跨域 PDF 文件，可能需要服务器端配合解决 CORS 问题
 - 文件路径需要正确配置
 - 对于 HTML 文件预览需要注意 XSS 安全问题
