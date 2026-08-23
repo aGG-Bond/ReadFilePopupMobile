@@ -9,8 +9,7 @@
  * - 自动检测移动设备并切换至 Canvas 模式
  * - 保持向后兼容，支持原有 iframe/object/embed 模式
  */
-// import Popup from "@aggbond/my-popup";
-import Popup from "./popup.esm.min.js";
+import Popup from "@aggbond/my-popup";
 const myPopup = new Popup();
 console.log('ReadFilePopupMobile v1.0.4')
 class FilePreview {
