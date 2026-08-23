@@ -10,10 +10,12 @@
 <body>
   <div id="readBox"></div>
 </body>
-<script type="module">
-  import FilePreview from '/src/ReadFilePopupMobile.js';
-
-  const filePreview = new FilePreview({
+<!-- 使用本地构建的 UMD 版本 -->
+<script src="../dist/ReadFilePopupMobile.umd.min.js"></script>
+<script>
+  // import FilePreview from '/src/ReadFilePopupMobile.js';
+  // import FilePreview from 'https://cdn.jsdelivr.net/npm/@aggbond/my-file-preview-mobile@latest/dist/ReadFilePopupMobile.es.min.js';
+  const filePreview = new window.FilePreview({
     isDrawFileList: true, // 是否需要绘制阅读文件列表
     isConfignFileKeyName: true, // 是否需要转换文件列表的key名称
     listObj: {
@@ -52,7 +54,7 @@
           "doc_type": 1,
           "pdf_url": "",
           "com_terms": [],
-          "content_text": "<p>高级功能说明撒打发士大夫阿斯蒂芬撒地方啊撒打发阿斯蒂撒...</p>"
+          "content_text": "<p>高级功能说明撒打发士大夫阿斯ティ芬撒地方啊撒打发阿斯蒂撒...</p>"
         },
         {
           "name": "《重要通知》",
@@ -135,7 +137,7 @@
       showProgressInButton: 0, // 是否在按钮上显示进度，0-不显示，1-显示当前文件进度，2-显示整体进度
       btnArr: ['同意并继续', '拒绝'],
 
-      coerceCallBack: (control,buttonIndex) => {
+      coerceCallBack: (control, buttonIndex) => {
         switch (buttonIndex) {
           case 0: // 同意
             if (control.isLastFile()) {
@@ -164,13 +166,13 @@
   });
 
   // filePreview.openCoerceReadPopup();
-  
+
   // const filePreview = new FilePreview({});
 
   // // // 直接加载并显示PDF文件
   // filePreview.loadFile('/xxx.pdf');
 
-  // // 加载并显示文本文件
+  // 加载并显示文本文件
   filePreview.loadFile('./123.txt');
 
 </script>

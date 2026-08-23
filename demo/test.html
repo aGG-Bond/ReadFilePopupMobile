@@ -5,6 +5,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>文件预览插件 Demo</title>
+  <script type="importmap">
+    {
+      "imports": {
+        "@aggbond/my-popup": "https://cdn.jsdelivr.net/npm/@aggbond/my-popup@latest/dist/popup.esm.js",
+        "dompurify": "https://cdn.jsdelivr.net/npm/dompurify@latest/dist/purify.es.js"
+      }
+    }
+  </script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -162,6 +170,14 @@
               {
                 "name": "雇主责任保险（2023版）条款C000231309120",
                 "pdf_url": "https://example.com/insurance.pdf",
+                "divType": "iframe",
+                "disclaimer": "<p><strong>责任免除</strong></p><p>本保险不承担下列损失或费用的赔偿责任：</p><p>1. 被保险人故意造成的损失；</p><p>2. 战争、军事冲突、暴乱等引起的损失；</p><p>3. 核事故引起的损失；</p><p>4. 被保险人违反法律法规规定从事的活动引起的损失；</p><p>5. 其他法律法规规定的责任免除情形。</p>",
+                "record_num": "C0002313091"
+              },
+              {
+                "name": "雇主责任保险",
+                "pdf_url": "https://example.com/insurance.pdf",
+                "divType": "embed",
                 "disclaimer": "<p><strong>责任免除</strong></p><p>本保险不承担下列损失或费用的赔偿责任：</p><p>1. 被保险人故意造成的损失；</p><p>2. 战争、军事冲突、暴乱等引起的损失；</p><p>3. 核事故引起的损失；</p><p>4. 被保险人违反法律法规规定从事的活动引起的损失；</p><p>5. 其他法律法规规定的责任免除情形。</p>",
                 "record_num": "C0002313091"
               }
@@ -171,6 +187,7 @@
           {
             "name": "《客户告知书》",
             "doc_type": 2,  // PDF文件
+            "divType": "object",
             "pdf_url": "https://example.com/information.pdf",
             "com_terms": "",
             "content_text": ""

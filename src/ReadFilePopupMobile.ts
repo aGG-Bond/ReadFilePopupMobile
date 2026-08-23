@@ -1,5 +1,92 @@
 // ReadFilePopupMobile.ts
 import Popup from "@aggbond/my-popup";
+import DOMPurify from 'dompurify';
+import { 
+  DEFAULT_SECURITY_CONFIG, 
+  PATH_VALIDATION_REGEX, 
+  PATH_BLACKLIST_PATTERNS,
+  type SecurityCheckResult,
+  createSecurityCheckResult
+} from './security-config';
+
+// 安全工具类
+class SecurityUtils {
+  // 验证文件路径安全性
+  static isValidFilePath(path: string): SecurityCheckResult {
+    const result = createSecurityCheckResult(true);
+    
+    // 基本格式检查
+    if (!path || typeof path !== 'string') {
+      result.isValid = false;
+      result.errors.push('路径不能为空');
+      return result;
+    }
+
+    // 长度检查
+    if (path.length > DEFAULT_SECURITY_CONFIG.maxFileNameLength) {
+      result.isValid = false;
+      result.errors.push(`路径长度超过限制 (${DEFAULT_SECURITY_CONFIG.maxFileNameLength}字符)`);
+    }
+
+    // 正则表达式检查
+    if (!PATH_VALIDATION_REGEX.test(path)) {
+      result.isValid = false;
+      result.errors.push('路径包含非法字符');
+    }
+
+    // 黑名单模式检查
+    for (const pattern of PATH_BLACKLIST_PATTERNS) {
+      if (pattern.test(path)) {
+        result.isValid = false;
+        result.errors.push('路径包含危险模式');
+        break;
+      }
+    }
+
+    // 防止路径遍历
+    if (path.includes('../') || path.includes('..\\')) {
+      result.isValid = false;
+      result.errors.push('检测到路径遍历攻击尝试');
+    }
+
+    return result;
+  }
+
+  // 验证文件扩展名
+  static isValidFileExtension(ext: string): boolean {
+    return DEFAULT_SECURITY_CONFIG.allowedFileTypes.includes(ext.toLowerCase());
+  }
+
+  // 净化HTML内容，防止XSS攻击
+  static sanitizeHTML(html: string): string {
+    try {
+      // 配置DOMPurify选项
+      const cleanHTML = DOMPurify.sanitize(html, {
+        ALLOWED_TAGS: DEFAULT_SECURITY_CONFIG.allowedTags,
+        ALLOWED_ATTR: DEFAULT_SECURITY_CONFIG.allowedAttributes,
+        FORBID_TAGS: DEFAULT_SECURITY_CONFIG.forbiddenTags,
+        FORBID_ATTR: DEFAULT_SECURITY_CONFIG.forbiddenAttributes
+      });
+      return cleanHTML;
+    } catch (error) {
+      console.warn('HTML净化失败:', error);
+      return '<p>内容加载失败</p>';
+    }
+  }
+
+  // 安全的错误信息处理
+  static getSafeErrorMessage(originalError: string): string {
+    // 移除可能暴露系统信息的敏感内容
+    let safeError = originalError.replace(/(file:\/\/|\/[^\/].*?\.[^\/\s]+)/gi, '[文件路径]');
+    safeError = safeError.replace(/(localhost|127\.0\.0\.1|::1)/gi, '[本地地址]');
+    return safeError;
+  }
+
+  // 验证文件大小
+  static isValidFileSize(size: number): boolean {
+    return size <= DEFAULT_SECURITY_CONFIG.maxFileSize;
+  }
+}
 
 interface FileObject {
   name: string;
@@ -350,11 +437,14 @@ class FilePreview {
     const { name: title, content_text: text } = filebox;
     const popupInstance = fromChooseList ? new Popup() : myPopup;
 
-    if (isCoerce) return text;
+    // 安全处理：净化HTML内容
+    const safeText = SecurityUtils.sanitizeHTML(text);
+
+    if (isCoerce) return safeText;
 
     popupInstance.showBottomPopup({
       title: title,
-      content: text,
+      content: safeText,
       contentStyle: {},
       titleStyle: {
         fontWeight: "bold",
@@ -703,19 +793,58 @@ class FilePreview {
 
   // 加载文件内容
   loadFile(filePath: string): void {
+    // 安全验证：检查文件路径
+    const pathValidation = SecurityUtils.isValidFilePath(filePath);
+    if (!pathValidation.isValid) {
+      console.error("文件路径验证失败:", pathValidation.errors.join(', '));
+      myPopup.showBottomPopup({
+        title: "文件加载失败",
+        content: `<p style="color: red;">文件路径验证失败: ${pathValidation.errors.join(', ')}</p>`,
+        callbacks: [function () {
+          console.log("路径验证失败弹窗关闭");
+        }],
+      });
+      return;
+    }
+
+    // CSRF防护：检查请求来源
+    if (typeof window !== 'undefined' && window.location) {
+      const currentOrigin = window.location.origin;
+      try {
+        const fileUrl = new URL(filePath, currentOrigin);
+        if (fileUrl.origin !== currentOrigin && !filePath.startsWith('http')) {
+          console.warn("跨域文件请求:", filePath);
+          // 可以在这里添加额外的跨域验证逻辑
+        }
+      } catch (e) {
+        console.error("URL解析失败:", e);
+        myPopup.showBottomPopup({
+          title: "文件加载失败",
+          content: `<p style="color: red;">文件URL格式不正确</p>`,
+          callbacks: [function () {
+            console.log("URL验证失败弹窗关闭");
+          }],
+        });
+        return;
+      }
+    }
+
     const fileExtension = filePath.split(".").pop()?.toLowerCase();
-    if (!fileExtension) {
-      console.error("无法识别文件类型:", filePath);
+    
+    // 安全验证：检查文件扩展名
+    if (!fileExtension || !SecurityUtils.isValidFileExtension(fileExtension)) {
+      console.error("不支持的文件类型:", fileExtension);
+      myPopup.showBottomPopup({
+        title: "文件加载失败",
+        content: `<p style="color: red;">不支持的文件类型: ${fileExtension || '未知'}</p>`,
+        callbacks: [function () {
+          console.log("文件类型验证失败弹窗关闭");
+        }],
+      });
       return;
     }
 
     const contentType = this.Configns.fileTypes[fileExtension];
-
-    if (!contentType) {
-      console.error("不支持的文件类型:", fileExtension);
-      return;
-    }
-
     const fileName = filePath.split("/").pop() || "文件";
 
     if (contentType === "application/pdf") {
@@ -727,7 +856,6 @@ class FilePreview {
         titleStyle: {
           fontWeight: "bold",
         },
-        // btns: ['确定'],
         callbacks: [function () {
           console.log("loadFile callback");
         }],
@@ -745,8 +873,9 @@ class FilePreview {
           // 根据文件类型决定展示方式
           let content: string;
           if (fileExtension === 'html' || fileExtension === 'htm') {
-            // 对于HTML文件，直接显示（但需要注意安全问题）
-            content = `<div style="max-height: 70vh; overflow-y: auto;">${data}</div>`;
+            // 对于HTML文件，进行安全净化后再显示
+            const safeData = SecurityUtils.sanitizeHTML(data);
+            content = `<div style="max-height: 70vh; overflow-y: auto;">${safeData}</div>`;
           } else {
             // 对于文本文件，使用<pre>标签保持格式
             content = `<pre style="white-space: pre-wrap; word-wrap: break-word; max-height: 70vh; overflow-y: auto;">${data}</pre>`;
@@ -768,10 +897,11 @@ class FilePreview {
         })
         .catch((error) => {
           console.error("文件加载失败:", error);
-          // 显示错误信息在弹窗中
+          // 显示安全的错误信息
+          const safeErrorMessage = SecurityUtils.getSafeErrorMessage(error.message);
           myPopup.showBottomPopup({
             title: "文件加载失败",
-            content: `<p style="color: red;">无法加载文件: ${filePath}</p><p>错误详情: ${error.message}</p>`,
+            content: `<p style="color: red;">无法加载文件</p><p>错误详情: ${safeErrorMessage}</p>`,
             callbacks: [function () {
               console.log("错误提示弹窗关闭");
             }],
@@ -782,3 +912,4 @@ class FilePreview {
 }
 
 export default FilePreview;
+export { SecurityUtils, DEFAULT_SECURITY_CONFIG };

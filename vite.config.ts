@@ -39,7 +39,7 @@ export default defineConfig({
   ],
   build: {
     lib: {
-      entry: resolve(__dirname, 'src/ReadFilePopupMobile.ts'),
+      entry: resolve(__dirname, 'src/ReadFilePopupMobile.es.js'),
       name: 'FilePreview',
       formats: ['es', 'umd'],
       fileName: (format) => `ReadFilePopupMobile.${format}.js`,
@@ -47,12 +47,9 @@ export default defineConfig({
     outDir: 'dist',
     minify: false,
     rollupOptions: {
-      external: ['@aggbond/my-popup'],
+      // UMD 构建时不 externalize 依赖，让它们被打包进文件
       output: {
-        globals: {
-          '@aggbond/my-popup': 'Popup'
-        },
-        exports: 'default'
+        exports: 'named'
       },
     },
   },

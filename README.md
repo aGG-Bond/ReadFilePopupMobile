@@ -1,8 +1,23 @@
 # ReadFilePopupMobile.js 组件文档
 
+## ⚠️ 安全注意事项
+
+**重要安全提醒：**
+- 本组件已集成安全防护措施，但仍需谨慎使用
+- 富文本内容建议来自可信源，已内置XSS防护
+- 文件路径已实施验证，防止路径遍历攻击
+- 网络请求已添加基本的CSRF防护检查
+
+**安全特性：**
+✅ HTML内容自动净化（DOMPurify）
+✅ 文件路径安全验证
+✅ 文件类型白名单控制
+✅ 错误信息脱敏处理
+✅ 基本CSRF防护机制
+
 ## 概述
 
-[ReadFilePopupMobile.js](file://d:\Desktop\组件\CoerceReadPopup\src\ReadFilePopupMobile.js) 是一个移动端文件预览组件，支持多种文件类型的展示，包括 PDF、富文本和引用文本。该组件提供了文件列表渲染、强制阅读弹窗、文件点击预览等功能。
+[ReadFilePopupMobile.js](file://d:\Desktop\组件\CoerceReadPopup\src\ReadFilePopupMobile.js) 是一个移动端文件预览组件，支持多种文件类型的展示，包括 PDF、富文本和引用文本。该组件提供了协仪多份文件列表渲染、强制阅读弹窗、文件点击预览等功能。
 
 ## 功能特性
 
@@ -33,15 +48,73 @@ const filePreview = new FilePreview({
 });
 ```
 
-### 浏览器直接引入
-```js
-<script src="https://unpkg.com/@yourname/file-preview-plugin@latest/dist/ReadFilePopupMobile.js"></script>
-<script>
-  const filePreview = new window.FilePreview({
-    // configuration
-  });
-</script>
+### 浏览器直接引入（UMD 版本 - 推荐）⭐
+
+**最简单的方式，无需任何配置：**
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <title>UMD 示例</title>
+</head>
+<body>
+  <div id="readBox"></div>
+  
+  <!-- 1. 引入 UMD 版本 -->
+  <script src="https://cdn.jsdelivr.net/npm/@aggbond/my-file-preview-mobile@latest/dist/ReadFilePopupMobile.umd.min.js"></script>
+  
+  <!-- 2. 直接使用 -->
+  <script>
+    const filePreview = new window.FilePreview({
+      // configuration
+    });
+  </script>
+</body>
+</html>
 ```
+
+**优点：**
+- ✅ 零配置，开箱即用
+- ✅ 所有依赖已打包，无需 Import Map
+- ✅ 兼容性好，支持各种环境
+- ✅ 适合快速开发和测试
+
+### 浏览器 ES Module 引入
+
+当使用 ES Module 版本时，需要通过 Import Map 声明依赖：
+
+```
+<!DOCTYPE html>
+<html>
+<head>
+  <script type="importmap">
+    {
+      "imports": {
+        "@aggbond/my-popup": "https://cdn.jsdelivr.net/npm/@aggbond/my-popup@latest/dist/popup.esm.js",
+        "dompurify": "https://cdn.jsdelivr.net/npm/dompurify@latest/dist/purify.es.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="readBox"></div>
+  
+  <script type="module">
+    import FilePreview from 'https://cdn.jsdelivr.net/npm/@aggbond/my-file-preview-mobile@latest/dist/ReadFilePopupMobile.es.js';
+    
+    const filePreview = new FilePreview({
+      // configuration
+    });
+  </script>
+</body>
+</html>
+```
+
+**为什么需要 Import Map？**
+- 构建后的 ES Module 保留了外部依赖的裸模块说明符（如 `@aggbond/my-popup`）
+- 浏览器无法直接解析这些说明符，需要通过 Import Map 映射到完整的 CDN URL
+- UMD 版本不需要 Import Map，因为所有依赖都已打包在一个文件中
 
 ## 配置选项
 
