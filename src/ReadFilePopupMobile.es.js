@@ -159,9 +159,9 @@ class FilePreview {
         useCanvasRender: false,
         // 是否使用 Canvas 渲染 (PDF.js),彻底解决移动端下载问题
         // 可选值：true(始终使用) | false(不使用) | 'auto'(自动检测移动设备)
-        pdfJsPath: "./pdf.min.js",
+        pdfJsPath: "./pdf.min.mjs",
         // PDF.js 库的路径 (如果使用 Canvas 渲染)
-        pdfWorkerPath: "./pdf.worker.min.js",
+        pdfWorkerPath: "./pdf.worker.min.mjs",
         // PDF.js Worker 路径 
         enableMobileDetect: true,
         // 是否启用移动设备自动检测 (当 useCanvasRender='auto' 时生效)
@@ -218,51 +218,18 @@ class FilePreview {
     if (this.pdfjsLib) {
       return this.pdfjsLib; // 已加载
     }
-    
-    return new Promise((resolve, reject) => {
-      // 检查是否已经全局加载
-      if (window.pdfjsLib) {
-        this.pdfjsLib = window.pdfjsLib;
-        resolve(this.pdfjsLib);
-        return;
+
+    try {
+      const pdfModule = await import(/* @vite-ignore */ this.Configns.pdfJsPath);
+      this.pdfjsLib = pdfModule;
+      if (this.pdfjsLib.GlobalWorkerOptions) {
+        this.pdfjsLib.GlobalWorkerOptions.workerSrc = this.Configns.pdfWorkerPath;
       }
-      
-      // 创建 script 标签加载 PDF.js
-      const script = document.createElement('script');
-      script.src = this.Configns.pdfJsPath;
-      script.async = true;
-      
-      script.onload = () => {
-        if (window.pdfjsLib) {
-          this.pdfjsLib = window.pdfjsLib;
-          
-          // 设置 Worker - 修复 "Cannot set properties of undefined" 错误
-          try {
-            // 确保 GlobalWorkerOptions 存在
-            if (!this.pdfjsLib.GlobalWorkerOptions) {
-              this.pdfjsLib.GlobalWorkerOptions = {};
-            }
-            
-            // 设置 workerSrc
-            this.pdfjsLib.GlobalWorkerOptions.workerSrc = this.Configns.pdfWorkerPath;
-            
-            console.log('PDF.js Worker 已配置:', this.pdfjsLib.GlobalWorkerOptions.workerSrc);
-          } catch (error) {
-            console.error('PDF.js Worker 配置失败:', error);
-          }
-          
-          resolve(this.pdfjsLib);
-        } else {
-          reject(new Error('PDF.js 加载失败'));
-        }
-      };
-      
-      script.onerror = () => {
-        reject(new Error(`无法加载 PDF.js 从 ${this.Configns.pdfJsPath}`));
-      };
-      
-      document.head.appendChild(script);
-    });
+      console.log('PDF.js Worker 已配置:', this.Configns.pdfWorkerPath);
+      return this.pdfjsLib;
+    } catch (error) {
+      throw new Error(`无法加载 PDF.js 从 ${this.Configns.pdfJsPath}: ${error.message}`);
+    }
   }
   
   /**

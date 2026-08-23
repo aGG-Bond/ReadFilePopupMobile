@@ -37,8 +37,8 @@ export default defineConfig({
       writeBundle() {
         const pdfJsDir = resolve(__dirname, 'node_modules/pdfjs-dist/build');
         const outputDir = resolve(__dirname, 'dist');
-        copyFileSync(resolve(pdfJsDir, 'pdf.min.js'), resolve(outputDir, 'pdf.min.js'));
-        copyFileSync(resolve(pdfJsDir, 'pdf.worker.min.js'), resolve(outputDir, 'pdf.worker.min.js'));
+        copyFileSync(resolve(pdfJsDir, 'pdf.min.mjs'), resolve(outputDir, 'pdf.min.mjs'));
+        copyFileSync(resolve(pdfJsDir, 'pdf.worker.min.mjs'), resolve(outputDir, 'pdf.worker.min.mjs'));
       }
     },
     dts({
