@@ -1,6 +1,7 @@
 import Popup from "@aggbond/my-popup";
 // import Popup from "/node_modules/@aggbond/my-popup/src/popup.js";
 const myPopup = new Popup();
+myPopup.msg('提示',{})
 // 文件预览插件
 class FilePreview {
   constructor(options) {

@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Canvas 渲染 Demo - ReadFilePopupMobile v1.0.4</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 750px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px 20px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      margin-bottom: 10px;
+    }
+
+    .header p {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .content {
+      padding: 20px;
+    }
+
+    .section {
+      margin-bottom: 30px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #667eea;
+    }
+
+    .info-box {
+      background: #f0f4ff;
+      border-left: 4px solid #667eea;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+    }
+
+    .info-box h3 {
+      color: #667eea;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+
+    .info-box ul {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    .info-box li {
+      font-size: 13px;
+      color: #666;
+      line-height: 1.8;
+      padding-left: 20px;
+      position: relative;
+    }
+
+    .info-box li:before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: #667eea;
+      font-weight: bold;
+    }
+
+    .button-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .btn {
+      padding: 14px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-align: center;
+      color: white;
+    }
+
+    .btn-canvas {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .btn-canvas:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-iframe {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    .btn-iframe:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
+    }
+
+    .btn-auto {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    .btn-auto:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
+    }
+
+    .btn-coerce {
+      background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    }
+
+    .btn-coerce:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(250, 112, 154, 0.4);
+    }
+
+    .mode-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: bold;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    .badge-canvas {
+      background: #667eea;
+      color: white;
+    }
+
+    .badge-iframe {
+      background: #f5576c;
+      color: white;
+    }
+
+    .badge-auto {
+      background: #4facfe;
+      color: white;
+    }
+
+    .config-section {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 15px;
+    }
+
+    .config-title {
+      font-size: 13px;
+      font-weight: bold;
+      color: #666;
+      margin-bottom: 10px;
+    }
+
+    .config-code {
+      background: #2d2d2d;
+      color: #f8f8f2;
+      padding: 12px;
+      border-radius: 6px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      overflow-x: auto;
+      line-height: 1.6;
+    }
+
+    .highlight {
+      color: #66d9ef;
+    }
+
+    .string {
+      color: #e6db74;
+    }
+
+    .comment {
+      color: #75715e;
+    }
+
+    .warning-box {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      margin-top: 20px;
+      border-radius: 4px;
+    }
+
+    .warning-box h3 {
+      color: #856404;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+
+    .warning-box p {
+      font-size: 13px;
+      color: #856404;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+
+      .header h1 {
+        font-size: 20px;
+      }
+
+      .btn {
+        font-size: 14px;
+        padding: 12px 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📄 Canvas 渲染 Demo</h1>
+      <p>ReadFilePopupMobile v1.0.4 - 基于 PDF.js 的移动端优化方案</p>
+    </div>
+
+    <div class="content">
+      <!-- 功能说明 -->
+      <div class="section">
+        <div class="section-title">✨ 新功能说明</div>
+        <div class="info-box">
+          <h3>v1.0.4 Canvas 渲染模式优势：</h3>
+          <ul>
+            <li>彻底解决移动端 PDF 下载问题（微信、iOS Safari 等）</li>
+            <li>支持触摸滚动和缩放操作</li>
+            <li>自动检测移动设备并切换渲染模式</li>
+            <li>保持与原有 iframe 模式的 API 兼容</li>
+            <li>加载进度条显示，提升用户体验</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 测试用例 -->
+      <div class="section">
+        <div class="section-title">🧪 测试用例</div>
+        
+        <div class="button-group">
+          <button class="btn btn-canvas" id="btn-canvas">
+            测试 Canvas 模式
+            <span class="mode-badge badge-canvas">RECOMMENDED</span>
+          </button>
+
+          <button class="btn btn-iframe" id="btn-iframe">
+            测试传统 iframe 模式
+            <span class="mode-badge badge-iframe">LEGACY</span>
+          </button>
+
+          <button class="btn btn-auto" id="btn-auto">
+            测试自动检测模式
+            <span class="mode-badge badge-auto">AUTO</span>
+          </button>
+
+          <button class="btn btn-coerce" id="btn-coerce">
+            测试强制阅读流程（多文件轮播）
+          </button>
+        </div>
+
+        <!-- Canvas 模式配置 -->
+        <div class="config-section">
+          <div class="config-title">Canvas 模式配置示例：</div>
+          <div class="config-code">
+<span class="keyword">import</span> FilePreview <span class="keyword">from</span> <span class="string">'../dist/ReadFilePopupMobile.es.js'</span>;
+
+<span class="keyword">const</span> filePreview = <span class="keyword">new</span> FilePreview({
+  <span class="highlight">useCanvasRender</span>: <span class="string">true</span>,  <span class="comment">// 强制使用 Canvas</span>
+  <span class="highlight">pdfJsPath</span>: <span class="string">'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'</span>,
+  <span class="highlight">pdfWorkerPath</span>: <span class="string">'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'</span>,
+  <span class="highlight">canvasRenderOptions</span>: {
+    scale: <span class="string">1.5</span>,
+    enableZoom: <span class="string">true</span>,
+    loadingBarColor: <span class="string">'#29AEEF'</span>
+  }
+});
+          </div>
+        </div>
+      </div>
+
+      <!-- 注意事项 -->
+      <div class="warning-box">
+        <h3>⚠️ 使用前准备</h3>
+        <p>
+          1. 本 Demo 使用 ES Module 版本（包含完整 Canvas 功能）<br>
+          2. PDF.js 库通过 CDN 自动加载，无需本地部署<br>
+          3. 建议在真实移动设备上测试以获得最佳体验<br>
+          4. 微信内置浏览器、iOS Safari 等环境推荐使用 Canvas 模式
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Map 配置：映射依赖路径 -->
+  <script type="importmap">
+  {
+    "imports": {
+      "@aggbond/my-popup": "https://cdn.jsdelivr.net/npm/@aggbond/my-popup@1.0.7/dist/popup.esm.js",
+      "dompurify": "https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.es.js"
+    }
+  }
+  </script>
+
+  <!-- ES Module 脚本 -->
+  <script type="module">
+    // 导入 ES Module 版本的组件
+    import FilePreview from '../dist/ReadFilePopupMobile.es.js';
+    
+    // 测试数据
+    const testPdfUrl = './test.pdf';
+    
+    const fileList = [
+      {
+        name: "用户服务协议",
+        doc_type: 2,
+        pdf_url: testPdfUrl,
+        com_terms: [],
+        content_text: ""
+      },
+      {
+        name: "隐私政策",
+        doc_type: 2,
+        pdf_url: testPdfUrl,
+        com_terms: [],
+        content_text: ""
+      }
+    ];
+
+    let currentInstance = null;
+
+    /**
+     * 测试 Canvas 模式
+     */
+    function testCanvasMode() {
+      console.log('🎨 初始化 Canvas 渲染模式');
+      
+      currentInstance = new FilePreview({ 
+        useCanvasRender: true,  // 强制使用 Canvas
+        pdfJsPath: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+        pdfWorkerPath: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
+        canvasRenderOptions: {
+          scale: 1.5,
+          maxZoom: 3,
+          minZoom: 0.5,
+          enableZoom: true,
+          loadingBarColor: '#29AEEF',
+          backgroundColor: '#ffffff'
+        }
+      });
+
+      // 直接预览 PDF
+      currentInstance.quotePdfFile({
+        file: {
+          name: "Canvas 模式测试文档",
+          pdf_url: testPdfUrl,
+          file_type: 2
+        },
+        fromChooseList: false,
+        isControl: false,
+        isCoerce: false
+      });
+    }
+
+    /**
+     * 测试传统 iframe 模式
+     */
+    function testIframeMode() {
+      console.log('🖼️ 初始化传统 iframe 模式');
+      
+      currentInstance = new FilePreview({
+        useCanvasRender: false  // 不使用 Canvas
+      });
+
+      currentInstance.quotePdfFile({
+        file: {
+          name: "传统模式测试文档",
+          pdf_url: testPdfUrl,
+          file_type: 2
+        },
+        fromChooseList: false,
+        isControl: false,
+        isCoerce: false
+      });
+    }
+
+    /**
+     * 测试自动检测模式
+     */
+    function testAutoMode() {
+      console.log('🤖 初始化自动检测模式');
+      
+      currentInstance = new FilePreview({
+        useCanvasRender: 'auto',  // 自动检测
+        enableMobileDetect: true,
+        mobileKeywords: ['MicroMessenger', 'Mobile', 'Android', 'iPhone', 'iPad'],
+        pdfJsPath: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+        pdfWorkerPath: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+      });
+
+      currentInstance.quotePdfFile({
+        file: {
+          name: "自动检测模式测试文档",
+          pdf_url: testPdfUrl,
+          file_type: 2
+        },
+        fromChooseList: false,
+        isControl: false,
+        isCoerce: false
+      });
+    }
+
+    /**
+     * 测试强制阅读流程
+     */
+    function testCoerceRead() {
+      console.log('📋 初始化强制阅读流程');
+      
+      currentInstance = new FilePreview({
+        useCanvasRender: true,  // 强制阅读也使用 Canvas
+        // pdfJsPath: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+        // pdfWorkerPath: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
+        coerceReadList: {
+          titleText: "请阅读并同意以下文件",
+          fileList: [
+            {
+              name: "《用户服务协议》",
+              file_type: 2,
+              pdf_url: testPdfUrl,
+              content_text: "",
+              com_terms: []
+            },
+            {
+              name: "《隐私政策》",
+              file_type: 2,
+              pdf_url: testPdfUrl,
+              content_text: "",
+              com_terms: []
+            }
+          ],
+          btnArr: ["确认已阅读并同意", "拒绝"],
+          btnStyle: [
+            { 
+              display: "inline-block",
+              width: "91vw",
+              height: "10.667vw",
+              color: "#fff",
+              backgroundColor: "#29AEEF",
+              borderRadius: "8.533vw",
+              textAlign: "center",
+              lineHeight: "10.667vw",
+              cursor: "pointer",
+              margin: "5.33vw auto"
+            },
+            { 
+              display: "inline-block",
+              width: "91vw",
+              height: "10.667vw",
+              color: "#fff",
+              backgroundColor: "#999",
+              borderRadius: "8.533vw",
+              textAlign: "center",
+              lineHeight: "10.667vw",
+              cursor: "pointer",
+              margin: "5.33vw auto"
+            }
+          ],
+          showProgressInButton: true,
+          coerceCallBack: [
+            (control, buttonIndex) => {
+              console.log('✅ 用户同意，当前索引:', control.getCurrentIndex());
+              control.next();
+            },
+            (control, buttonIndex) => {
+              console.log('❌ 用户拒绝，当前索引:', control.getCurrentIndex());
+              control.close();
+            }
+          ]
+        }
+      });
+
+      // 打开强制阅读弹窗
+      currentInstance.openCoerceReadPopup();
+    }
+
+    // 绑定按钮事件
+    document.getElementById('btn-canvas').addEventListener('click', testCanvasMode);
+    document.getElementById('btn-iframe').addEventListener('click', testIframeMode);
+    document.getElementById('btn-auto').addEventListener('click', testAutoMode);
+    document.getElementById('btn-coerce').addEventListener('click', testCoerceRead);
+
+    // 页面加载完成提示
+    window.addEventListener('load', () => {
+      console.log('✅ Canvas Demo 加载完成（ES Module 版本）');
+      console.log('💡 提示：点击按钮即可测试不同渲染模式');
+      console.log('📦 使用的构建文件: ReadFilePopupMobile.es.js');
+    });
+  </script>
+</body>
+</html>
