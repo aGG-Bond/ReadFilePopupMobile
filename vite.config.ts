@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
-import { readFileSync } from 'fs';
+import { copyFileSync, readFileSync } from 'fs';
 import dts from 'vite-plugin-dts';
 
 const packageJson = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf-8'));
@@ -30,6 +30,15 @@ export default defineConfig({
             }
           }
         }
+      }
+    },
+    {
+      name: 'copy-pdfjs-assets',
+      writeBundle() {
+        const pdfJsDir = resolve(__dirname, 'node_modules/pdfjs-dist/build');
+        const outputDir = resolve(__dirname, 'dist');
+        copyFileSync(resolve(pdfJsDir, 'pdf.min.js'), resolve(outputDir, 'pdf.min.js'));
+        copyFileSync(resolve(pdfJsDir, 'pdf.worker.min.js'), resolve(outputDir, 'pdf.worker.min.js'));
       }
     },
     dts({

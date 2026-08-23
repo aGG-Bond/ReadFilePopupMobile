@@ -159,9 +159,9 @@ class FilePreview {
         useCanvasRender: false,
         // 是否使用 Canvas 渲染 (PDF.js),彻底解决移动端下载问题
         // 可选值：true(始终使用) | false(不使用) | 'auto'(自动检测移动设备)
-        pdfJsPath: "/assets/js/pdf.js",
+        pdfJsPath: "./pdf.min.js",
         // PDF.js 库的路径 (如果使用 Canvas 渲染)
-        pdfWorkerPath: "/assets/js/pdf.worker.js",
+        pdfWorkerPath: "./pdf.worker.min.js",
         // PDF.js Worker 路径 
         enableMobileDetect: true,
         // 是否启用移动设备自动检测 (当 useCanvasRender='auto' 时生效)
