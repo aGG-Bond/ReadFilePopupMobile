@@ -9,6 +9,7 @@
     "declaration": true,
     "outDir": "./dist/types",
     "declarationDir": "./dist/types",
+    "rootDir": "./src",
     "esModuleInterop": true,
 
     /* Bundler mode */
@@ -25,5 +26,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src/**/*", "test/**/*"]
+  "include": ["src/**/*"]
 }

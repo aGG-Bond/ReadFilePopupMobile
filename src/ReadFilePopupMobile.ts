@@ -90,9 +90,9 @@ class SecurityUtils {
 
 interface FileObject {
   name: string;
-  file_type: number;
-  pdf_url: string;
-  content_text: string;
+  file_type?: number;
+  pdf_url?: string;
+  content_text?: string;
   com_terms?: FileObject[];
   styleStr?: Record<string, string>;
   divType?: string;
@@ -128,8 +128,8 @@ interface ConfigOptions {
   fileTypes?: Record<string, string>;
   fileKeyNameConfign?: {
     fileTitle: string;
-    fileType: string;
-    filePdfUrl: string;
+    fileType?: string;
+    filePdfUrl?: string;
     fileRichContent: string;
     fileArr: string;
   };
@@ -138,6 +138,19 @@ interface ConfigOptions {
   listObj?: ListObject;
   coerceReadList?: CoerceReadList;
   isBindFileClick?: boolean;
+  useCanvasRender?: boolean | 'auto';
+  pdfJsPath?: string;
+  pdfWorkerPath?: string;
+  enableMobileDetect?: boolean;
+  mobileKeywords?: string[];
+  canvasRenderOptions?: {
+    scale?: number;
+    maxZoom?: number;
+    minZoom?: number;
+    enableZoom?: boolean;
+    loadingBarColor?: string;
+    backgroundColor?: string;
+  };
 }
 
 interface ControlObject {
@@ -162,7 +175,15 @@ class FilePreview {
     listObj: Required<ListObject>;
     coerceReadList: Required<CoerceReadList>;
     fileKeyNameConfign: NonNullable<ConfigOptions['fileKeyNameConfign']>;
+    useCanvasRender: boolean | 'auto';
+    pdfJsPath: string;
+    pdfWorkerPath: string;
+    enableMobileDetect: boolean;
+    mobileKeywords: string[];
+    canvasRenderOptions: Required<NonNullable<ConfigOptions['canvasRenderOptions']>>;
+    _isMobileDevice: boolean;
   };
+  pdfjsLib: any = null;
 
   constructor(options: ConfigOptions) {
     // 默认配置
@@ -269,12 +290,157 @@ class FilePreview {
           ],
         },
         isBindFileClick: false, // 是否需要绑定文件点击事件
+        useCanvasRender: false,
+        pdfJsPath: "./pdf.min.mjs",
+        pdfWorkerPath: "./pdf.worker.min.mjs",
+        enableMobileDetect: true,
+        mobileKeywords: ['MicroMessenger', 'Mobile', 'Android', 'iPhone', 'iPad'],
+        canvasRenderOptions: {
+          scale: 1.5,
+          maxZoom: 3,
+          minZoom: 0.5,
+          enableZoom: true,
+          loadingBarColor: '#29AEEF',
+          backgroundColor: '#ffffff'
+        },
+        _isMobileDevice: false,
       },
       options
     );
 
+    this.Configns._isMobileDevice = this.Configns.useCanvasRender === 'auto' && this.Configns.enableMobileDetect
+      ? this._detectMobileDevice()
+      : this.Configns.useCanvasRender === true;
+
     // 初始化模态框
     this.initModal();
+  }
+
+  private _detectMobileDevice(): boolean {
+    const userAgent = navigator.userAgent || navigator.vendor || '';
+    return this.Configns.mobileKeywords.some((keyword) =>
+      new RegExp(keyword, 'i').test(userAgent)
+    );
+  }
+
+  private async _loadPdfJs(): Promise<any> {
+    if (this.pdfjsLib) return this.pdfjsLib;
+    try {
+      const pdfModule = await import(/* @vite-ignore */ this.Configns.pdfJsPath);
+      this.pdfjsLib = pdfModule;
+      if (this.pdfjsLib.GlobalWorkerOptions) {
+        this.pdfjsLib.GlobalWorkerOptions.workerSrc = this.Configns.pdfWorkerPath;
+      }
+      return this.pdfjsLib;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`无法加载 PDF.js 从 ${this.Configns.pdfJsPath}: ${message}`);
+    }
+  }
+
+  private async _renderPdfWithCanvas(params: {
+    file: FileObject;
+    fromChooseList?: boolean;
+    isCoerce?: boolean;
+  }): Promise<string | void> {
+    const { file, fromChooseList = false, isCoerce = false } = params;
+    const popupInstance = fromChooseList ? new Popup() : myPopup;
+    try {
+      if (!file.pdf_url) throw new Error('PDF URL 不能为空');
+      await this._loadPdfJs();
+      const containerId = `pdf-canvas-${Date.now()}`;
+      const loadingBarId = `loading-bar-${Date.now()}`;
+      const html = `<div id="${containerId}" class="aggb-pdf-canvas" style="width:100%;height:auto;position:relative;background:${this.Configns.canvasRenderOptions.backgroundColor}">
+        <div id="${loadingBarId}" class="aggb-pdf-loading-bar" style="position:absolute;top:0;left:0;width:100%;height:4px;background:#f0f0f0;z-index:999"><div class="progress aggb-pdf-progress" style="height:100%;width:0%;background:${this.Configns.canvasRenderOptions.loadingBarColor};transition:width 0.3s"></div></div>
+        <div class="pdf-canvas-container aggb-pdf-canvas-container" style="boxSizing:border-box;width:100%;height:100%;overflow:auto;-webkit-overflow-scrolling:touch;padding:10px"></div></div>`;
+      if (isCoerce) return `<div data-pdf-render-type="canvas" data-pdf-url="${file.pdf_url}" data-pdf-container-id="${containerId}" data-pdf-loading-bar-id="${loadingBarId}">${html}</div>`;
+      popupInstance.showBottomPopup({
+        title: file.name,
+        content: html,
+        titleStyle: {
+          width: '90%',
+          fontSize: '4.266vw',
+          overflow: 'hidden',
+          whiteSpace: 'nowrap',
+          textOverflow: 'ellipsis',
+          fontWeight: 'bold',
+          height: '13.33vw',
+          minHeight: '13.33vw',
+          lineHeight: '13.33vw',
+        },
+        contentStyle: { overflowY: 'auto', flex: '1', padding: '0' },
+        contentBoxStyle: { maxHeight: '100vh', overflow: 'hidden' },
+        callbacks: [() => console.log('Canvas PDF 弹窗关闭')],
+      });
+      setTimeout(() => this._initPdfCanvas(file.pdf_url as string, containerId, loadingBarId), 100);
+    } catch (error) {
+      console.error('Canvas 渲染失败，回退到 iframe 模式:', error);
+      return this._renderPdfWithIframe(params);
+    }
+  }
+
+  private _renderPdfWithIframe(params: { file: FileObject; fromChooseList?: boolean; isControl?: boolean; isCoerce?: boolean }): string | void {
+    const { file, fromChooseList = false, isControl = false, isCoerce = false } = params;
+    const popupInstance = fromChooseList ? new Popup() : myPopup;
+    const modifiedUrl = isControl ? file.pdf_url : `${file.pdf_url}#toolbar=0&navpanes=0&scrollbar=0`;
+    const html = `<iframe class="aggb-pdf-iframe" src="${modifiedUrl}" width="100%" height="800" style="border:none;"></iframe>`;
+    if (isCoerce) return html;
+    popupInstance.showBottomPopup({ title: file.name, content: html, contentStyle: { padding: '0' }, contentBoxStyle: { maxHeight: '100vh' }, titleStyle: { fontWeight: 'bold' } });
+  }
+
+  private async _initPdfCanvas(url: string, containerId: string, loadingBarId: string): Promise<void> {
+    try {
+      if (!url || typeof url !== 'string') throw new Error('PDF URL 不能为空');
+      if (!this.pdfjsLib) throw new Error('PDF.js 未加载');
+
+      const loadingTask = this.pdfjsLib.getDocument({ url });
+      loadingTask.onProgress = (progress: { loaded: number; total: number }) => {
+        if (!progress.total) return;
+        const progressBar = document.querySelector(`#${loadingBarId} .aggb-pdf-progress`);
+        if (progressBar instanceof HTMLElement) {
+          progressBar.style.width = `${Math.round((progress.loaded / progress.total) * 100)}%`;
+        }
+      };
+
+      const pdf = await loadingTask.promise;
+      const loadingBar = document.getElementById(loadingBarId);
+      if (loadingBar) loadingBar.style.display = 'none';
+      const container = document.querySelector(`#${containerId} .pdf-canvas-container`);
+      if (!container) throw new Error('Canvas 容器未找到');
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        await this._renderPdfPage(pdf, pageNum, container as HTMLElement);
+      }
+    } catch (error) {
+      console.error('PDF Canvas 渲染错误:', error);
+      const container = document.querySelector(`#${containerId} .pdf-canvas-container`);
+      if (container) {
+        const message = error instanceof Error ? SecurityUtils.getSafeErrorMessage(error.message) : '未知错误';
+        container.innerHTML = `<div class="aggb-pdf-error" style="text-align:center;padding:50px;color:#999"><p>PDF 加载失败</p><p style="font-size:12px">${message}</p></div>`;
+      }
+    }
+  }
+
+  private async _renderPdfPage(pdf: any, pageNum: number, container: HTMLElement): Promise<void> {
+    const page = await pdf.getPage(pageNum);
+    const viewport = page.getViewport({ scale: this.Configns.canvasRenderOptions.scale });
+    const pageDiv = document.createElement('div');
+    pageDiv.className = 'pdf-page-container aggb-pdf-page';
+    pageDiv.style.cssText = 'margin:0 auto 10px;box-shadow:0 2px 10px rgba(0,0,0,0.1);background:white;max-width:100%;overflow:hidden;';
+    const canvas = document.createElement('canvas');
+    canvas.className = 'aggb-pdf-page-canvas';
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('无法创建 Canvas 上下文');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const maxWidth = container.clientWidth - 20;
+    if (maxWidth > 0 && viewport.width > maxWidth) {
+      const responsiveScale = maxWidth / viewport.width;
+      canvas.style.width = `${maxWidth}px`;
+      canvas.style.height = `${viewport.height * responsiveScale}px`;
+    }
+    pageDiv.appendChild(canvas);
+    container.appendChild(pageDiv);
+    await page.render({ canvasContext: context, viewport }).promise;
   }
 
   // 初始化
@@ -313,7 +479,7 @@ class FilePreview {
     const { fileTitle, filePdfUrl, fileRichContent, fileArr, fileType } =
       this.Configns.fileKeyNameConfign;
 
-    if (!fileTitle || !filePdfUrl || !fileRichContent || !fileArr)
+    if (!fileTitle || !fileType || !filePdfUrl || !fileRichContent || !fileArr)
       throw new Error("请传入文件keyNameConfign的参数");
 
     data.forEach((item) => {
@@ -328,7 +494,7 @@ class FilePreview {
   }
 
   //渲染阅读文件列表
-  drawReadFileList(listObj: ListObject): void {
+  async drawReadFileList(listObj: ListObject): Promise<void> {
     const {
       listId: ID,
       fileList,
@@ -343,16 +509,16 @@ class FilePreview {
     if (!ID) throw new Error("请传入需要添加的dom ID");
     if (fileList.length < 1) throw new Error("请传入需要渲染的文件数据");
 
-    let html = `${isCheckButton ? `<input type="checkbox" id="${checkButtonID}" />` : ""
+    let html = `${isCheckButton ? `<input class="aggb-file-list-checkbox" type="checkbox" id="${checkButtonID}" />` : ""
       }${listText}`;
 
     for (let i = 0, len = fileList.length; i < len; i++) {
       const { name, pdf_url, file_type, styleStr } = fileList[i];
       const type =
         file_type ||
-        this.judgeFileType({ type: "", file: fileList[i], index: i });
+        await this.judgeFileType({ type: "", file: fileList[i], index: i });
 
-      html += `<span class="pdfsee item-contract" data-pdf="${file_type == 2 ? pdf_url : ""
+      html += `<span class="pdfsee item-contract aggb-file-list-item" data-pdf="${file_type == 2 ? pdf_url : ""
         }" data-title="${name}" data-index="${i}" data-type="${type}" style="${this.objToStr(
           styleStr ? styleStr : fileStyle || {}
         )}">${name}</span>`;
@@ -387,7 +553,7 @@ class FilePreview {
   }
 
   // 判断文件格式
-  judgeFileType(
+  async judgeFileType(
     params: {
       type: string | number;
       file?: FileObject;
@@ -395,7 +561,7 @@ class FilePreview {
       fromChooseList?: boolean;
       isCoerce?: boolean;
     }
-  ): number | string | void {
+  ): Promise<number | string | void> {
     const { type, file, index, fromChooseList = false, isCoerce = false } = params;
     if (!file) throw new Error("未找到对应文件信息 file is not defined");
     let html;
@@ -406,11 +572,11 @@ class FilePreview {
         break;
       case "2":
       case 2:
-        html = this.quotePdfFile({ file, fromChooseList, isCoerce });
+        html = await this.quotePdfFile({ file, fromChooseList, isCoerce });
         break;
       case "3":
       case 3:
-        html = this.choosePdfFile({ file, index, fromChooseList, isCoerce });
+        html = await this.choosePdfFile({ file, index, fromChooseList, isCoerce });
         break;
       default:
         const { com_terms, content_text, pdf_url } = file;
@@ -438,7 +604,7 @@ class FilePreview {
     const popupInstance = fromChooseList ? new Popup() : myPopup;
 
     // 安全处理：净化HTML内容
-    const safeText = SecurityUtils.sanitizeHTML(text);
+    const safeText = SecurityUtils.sanitizeHTML(text || '');
 
     if (isCoerce) return safeText;
 
@@ -457,28 +623,28 @@ class FilePreview {
   }
 
   // 多分pdf选择
-  choosePdfFile(params: {
+  async choosePdfFile(params: {
     file: FileObject;
     index?: number;
     fromChooseList?: boolean;
     isCoerce?: boolean;
-  }): string | void {
+  }): Promise<string | void> {
     const { file: filebox, index: _index, fromChooseList = false, isCoerce = false } = params;
     console.log("filebox", filebox);
 
     const { com_terms: fileArr = [], name: title } = filebox;
     const popupInstance = fromChooseList ? new Popup() : myPopup;
 
-    let html = "<dl class='ChoosePdfFileList' style='margin:0;padding:0;'>";
+    let html = "<dl class='ChoosePdfFileList aggb-pdf-choose-list' style='margin:0;padding:0;'>";
 
     for (let i = 0; i < fileArr.length; i++) {
       const { pdf_url, name, file_type } = fileArr[i];
       const type =
         file_type ||
-        this.judgeFileType({ type: "", file: fileArr[i], index: i });
+        await this.judgeFileType({ type: "", file: fileArr[i], index: i });
 
-      html += `<dd class="cl" data-pdf="${pdf_url}" data-title="${name}" data-index="${i}" style="margin:0">
-          <span class="pdfsee item-contract" data-pdf="${pdf_url}" data-title="${name}" data-index="${i}" data-type="${type}">${name}</span>
+        html += `<dd class="cl aggb-pdf-choose-item" data-pdf="${pdf_url}" data-title="${name}" data-index="${i}" style="margin:0">
+          <span class="pdfsee item-contract aggb-pdf-choose-link" data-pdf="${pdf_url}" data-title="${name}" data-index="${i}" data-type="${type}">${name}</span>
         </dd>`;
     }
 
@@ -503,14 +669,19 @@ class FilePreview {
   }
 
   // 引用条款 pdf文件
-  quotePdfFile(params: {
+  async quotePdfFile(params: {
     file: FileObject;
     fromChooseList?: boolean;
     isControl?: boolean;
     isCoerce?: boolean;
-  }): string | void {
+  }): Promise<string | void> {
     const { file: filebox, fromChooseList = false, isControl = false, isCoerce = false } = params;
     const { pdf_url: url, name: title, divType = "iframe" } = filebox;
+
+    const shouldUseCanvas = this.Configns._isMobileDevice || this.Configns.useCanvasRender === true;
+    if (shouldUseCanvas) {
+      return this._renderPdfWithCanvas({ file: filebox, fromChooseList, isCoerce });
+    }
 
     // 如果来自选择列表，创建新实例
     const popupInstance = fromChooseList ? new Popup() : myPopup;
@@ -520,10 +691,10 @@ class FilePreview {
       ? url
       : `${url}#toolbar=0&navpanes=0&scrollbar=0`;
 
-    const iframeHtml = `<iframe src="${modifiedUrl}" width="100%" height="800" style="border:none;"></iframe>`;
-    const objectHtml = `<object data="${modifiedUrl}" type="application/pdf" width="100%" height="800">
+    const iframeHtml = `<iframe class="aggb-pdf-iframe" src="${modifiedUrl}" width="100%" height="800" style="border:none;"></iframe>`;
+    const objectHtml = `<object class="aggb-pdf-object" data="${modifiedUrl}" type="application/pdf" width="100%" height="800">
     <p>您的浏览器不支持PDF查看。请<a href="${modifiedUrl}">下载文件</a>。</p></object>`;
-    const embedHtml = `<embed src="${modifiedUrl}" type="application/pdf" width="100%" height="800" />`;
+    const embedHtml = `<embed class="aggb-pdf-embed" src="${modifiedUrl}" type="application/pdf" width="100%" height="800" />`;
 
     const html =
       divType === "iframe"
@@ -583,7 +754,7 @@ class FilePreview {
   }
 
   // 渲染强制阅读文件内容
-  openCoerceReadPopup(): void {
+  async openCoerceReadPopup(): Promise<void> {
     const {
       fileList,
       btnArr = ["同意并继续"],
@@ -600,7 +771,7 @@ class FilePreview {
     let customButtonTitles: string[] | null = null;
     // 记录已访问的文件索引，用于判断是否可以返回
     let visitedIndices = [0];
-    const showNextFile = (_btnTitleArr?: string[]) => {
+    const showNextFile = async (_btnTitleArr?: string[]): Promise<void> => {
       if (currentIndex >= fileList.length) return;
 
       const file = fileList[currentIndex];
@@ -608,7 +779,7 @@ class FilePreview {
 
       // 确保文件类型已设置
       if (!file.file_type) {
-        file.file_type = this.judgeFileType({
+        file.file_type = await this.judgeFileType({
           type: "",
           file,
           isCoerce: true
@@ -616,7 +787,7 @@ class FilePreview {
       }
 
       // 获取文件内容
-      const fileContent = this.judgeFileType({
+      const fileContent = await this.judgeFileType({
         type: file.file_type,
         file,
         isCoerce: true,
@@ -783,12 +954,22 @@ class FilePreview {
 
       myPopup.showBottomPopup(popupConfig);
 
+      const canvasRoot = document.querySelector('[data-pdf-render-type="canvas"]');
+      if (canvasRoot instanceof HTMLElement) {
+        const containerId = canvasRoot.dataset.pdfContainerId;
+        const loadingBarId = canvasRoot.dataset.pdfLoadingBarId;
+        const pdfUrl = canvasRoot.dataset.pdfUrl;
+        if (containerId && loadingBarId && pdfUrl) {
+          setTimeout(() => this._initPdfCanvas(pdfUrl, containerId, loadingBarId), 100);
+        }
+      }
+
       if (file.file_type === 3 && file.com_terms) {
         this.bindFileClick(".ChoosePdfFileList", file.com_terms);
       }
     };
 
-    showNextFile();
+    await showNextFile();
   }
 
   // 加载文件内容
@@ -799,7 +980,7 @@ class FilePreview {
       console.error("文件路径验证失败:", pathValidation.errors.join(', '));
       myPopup.showBottomPopup({
         title: "文件加载失败",
-        content: `<p style="color: red;">文件路径验证失败: ${pathValidation.errors.join(', ')}</p>`,
+        content: `<p class="aggb-file-error" style="color: red;">文件路径验证失败: ${pathValidation.errors.join(', ')}</p>`,
         callbacks: [function () {
           console.log("路径验证失败弹窗关闭");
         }],
@@ -820,7 +1001,7 @@ class FilePreview {
         console.error("URL解析失败:", e);
         myPopup.showBottomPopup({
           title: "文件加载失败",
-          content: `<p style="color: red;">文件URL格式不正确</p>`,
+          content: `<p class="aggb-file-error" style="color: red;">文件URL格式不正确</p>`,
           callbacks: [function () {
             console.log("URL验证失败弹窗关闭");
           }],
@@ -836,7 +1017,7 @@ class FilePreview {
       console.error("不支持的文件类型:", fileExtension);
       myPopup.showBottomPopup({
         title: "文件加载失败",
-        content: `<p style="color: red;">不支持的文件类型: ${fileExtension || '未知'}</p>`,
+        content: `<p class="aggb-file-error" style="color: red;">不支持的文件类型: ${fileExtension || '未知'}</p>`,
         callbacks: [function () {
           console.log("文件类型验证失败弹窗关闭");
         }],
@@ -851,7 +1032,7 @@ class FilePreview {
       // 对于PDF文件，直接使用iframe，避免CORS问题
       myPopup.showBottomPopup({
         title: fileName,
-        content: `<iframe src="${filePath}" width="100%" height="600px" style="border:none;"></iframe>`,
+        content: `<iframe class="aggb-file-pdf-iframe" src="${filePath}" width="100%" height="600px" style="border:none;"></iframe>`,
         contentStyle: {},
         titleStyle: {
           fontWeight: "bold",
@@ -875,10 +1056,10 @@ class FilePreview {
           if (fileExtension === 'html' || fileExtension === 'htm') {
             // 对于HTML文件，进行安全净化后再显示
             const safeData = SecurityUtils.sanitizeHTML(data);
-            content = `<div style="max-height: 70vh; overflow-y: auto;">${safeData}</div>`;
+            content = `<div class="aggb-file-html-content" style="max-height: 70vh; overflow-y: auto;">${safeData}</div>`;
           } else {
             // 对于文本文件，使用<pre>标签保持格式
-            content = `<pre style="white-space: pre-wrap; word-wrap: break-word; max-height: 70vh; overflow-y: auto;">${data}</pre>`;
+            content = `<pre class="aggb-file-text-content" style="white-space: pre-wrap; word-wrap: break-word; max-height: 70vh; overflow-y: auto;">${data}</pre>`;
           }
           myPopup.showBottomPopup({
             title: fileName,
@@ -901,7 +1082,7 @@ class FilePreview {
           const safeErrorMessage = SecurityUtils.getSafeErrorMessage(error.message);
           myPopup.showBottomPopup({
             title: "文件加载失败",
-            content: `<p style="color: red;">无法加载文件</p><p>错误详情: ${safeErrorMessage}</p>`,
+            content: `<p class="aggb-file-error" style="color: red;">无法加载文件</p><p class="aggb-file-error-detail">错误详情: ${safeErrorMessage}</p>`,
             callbacks: [function () {
               console.log("错误提示弹窗关闭");
             }],

@@ -48,7 +48,7 @@ export default defineConfig({
   ],
   build: {
     lib: {
-      entry: resolve(__dirname, 'src/ReadFilePopupMobile.es.js'),
+      entry: resolve(__dirname, 'src/ReadFilePopupMobile.ts'),
       name: 'FilePreview',
       formats: ['es', 'umd'],
       fileName: (format) => `ReadFilePopupMobile.${format}.js`,
