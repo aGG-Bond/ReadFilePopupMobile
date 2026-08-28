@@ -30,7 +30,7 @@
   ],
   "scripts": {
     "dev": "vite",
-    "build": "vite build && npm run minify",
+    "build": "node scripts/build-inline-worker.js && vite build && npm run minify",
     "minify": "node scripts/minify.js",
     "preview": "vite preview",
     "test": "jest",

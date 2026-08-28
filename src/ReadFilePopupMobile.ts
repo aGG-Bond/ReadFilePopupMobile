@@ -1,6 +1,8 @@
 // ReadFilePopupMobile.ts
 import Popup from "@aggbond/my-popup";
 import { SecurityUtils, DEFAULT_SECURITY_CONFIG } from './security-config';
+import * as pdfjsLib from 'pdfjs-dist';
+import { pdfWorkerBase64 } from './pdf.worker.inline';
 
 interface FileObject {
   name?: string;
@@ -219,8 +221,8 @@ class FilePreview {
         },
         isBindFileClick: false, // 是否需要绑定文件点击事件
         useCanvasRender: true,
-        pdfJsPath: "./pdf.min.mjs",
-        pdfWorkerPath: "./pdf.worker.min.mjs",
+        pdfJsPath: '',
+        pdfWorkerPath: '',
         enableMobileDetect: true,
         mobileKeywords: ['MicroMessenger', 'Mobile', 'Android', 'iPhone', 'iPad'],
         canvasRenderOptions: {
@@ -268,17 +270,34 @@ class FilePreview {
 
   private async _loadPdfJs(): Promise<any> {
     if (this.pdfjsLib) return this.pdfjsLib;
-    try {
-      const pdfModule = await import(/* @vite-ignore */ this.Configns.pdfJsPath);
-      this.pdfjsLib = pdfModule;
-      if (this.pdfjsLib.GlobalWorkerOptions) {
-        this.pdfjsLib.GlobalWorkerOptions.workerSrc = this.Configns.pdfWorkerPath;
+    
+    let lib: any;
+    if (this.Configns.pdfJsPath) {
+      try {
+        lib = await import(/* @vite-ignore */ this.Configns.pdfJsPath);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(`无法加载 PDF.js 从 ${this.Configns.pdfJsPath}: ${message}`);
       }
-      return this.pdfjsLib;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      throw new Error(`无法加载 PDF.js 从 ${this.Configns.pdfJsPath}: ${message}`);
+    } else {
+      lib = pdfjsLib;
     }
+    
+    if (lib.GlobalWorkerOptions) {
+      if (this.Configns.pdfWorkerPath) {
+        lib.GlobalWorkerOptions.workerSrc = this.Configns.pdfWorkerPath;
+      } else {
+        const binaryString = atob(pdfWorkerBase64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: 'application/javascript' });
+        lib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(blob);
+      }
+    }
+    this.pdfjsLib = lib;
+    return this.pdfjsLib;
   }
 
   private async _getPdfDocument(url: string, onProgress?: (progress: { loaded: number; total: number }) => void): Promise<any> {

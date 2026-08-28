@@ -9,7 +9,7 @@
 - 🔧 灵活的配置选项
 - 🎨 自定义样式支持
 - 🖼️ Canvas PDF 渲染，适合移动端预览
-- 📦 PDF.js 主文件和 Worker 随 npm 包内置
+- 📦 PDF.js 主文件和 Worker 完全内置，零外部依赖
 
 ## 安全特性
 
@@ -154,10 +154,11 @@ CDN 使用时需配置 PDF.js 路径：
 ```js
 new FilePreview({
   useCanvasRender: true,
-  pdfJsPath: 'https://cdn.jsdelivr.net/npm/@aggbond/my-file-preview-mobile@1.0.4/dist/pdf.min.mjs',
-  pdfWorkerPath: 'https://cdn.jsdelivr.net/npm/@aggbond/my-file-preview-mobile@1.0.4/dist/pdf.worker.min.mjs'
+  pdfJsPath: 'https://cdn.jsdelivr.net/npm/@aggbond/my-file-preview-mobile@latest/dist/ReadFilePopupMobile.umd.min.js'
 });
 ```
+
+> Worker 已内联到主文件中，无需额外配置。如需自定义 Worker 路径，可通过 `pdfWorkerPath` 覆盖。
 
 ## 配置选项
 
@@ -263,6 +264,7 @@ fileKeyNameConfign: {
 - Canvas 模式要求 PDF 地址允许跨域或与页面同源
 - 页面关闭时自动清理缓存，也可调用 `destroy()` 手动清理
 - UMD 版本已打包所有依赖，开箱即用
+- PDF Worker 已内联到主文件中，无需额外配置外部 Worker 文件
 
 ## 许可协议
 

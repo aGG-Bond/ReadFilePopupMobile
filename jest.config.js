@@ -16,7 +16,9 @@ module.exports = {
     ],
   },
   testTimeout: 30000,
+  setupFiles: ['<rootDir>/test/setup.js'],
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/src/$1'
+    '^@/(.*)$': '<rootDir>/src/$1',
+    '^pdfjs-dist$': '<rootDir>/test/__mocks__/pdfjs-dist.js'
   }
 };
