@@ -1,95 +1,9 @@
 // ReadFilePopupMobile.ts
 import Popup from "@aggbond/my-popup";
-import DOMPurify from 'dompurify';
-import { 
-  DEFAULT_SECURITY_CONFIG, 
-  PATH_VALIDATION_REGEX, 
-  PATH_BLACKLIST_PATTERNS,
-  type SecurityCheckResult,
-  createSecurityCheckResult
-} from './security-config';
-
-// 安全工具类
-class SecurityUtils {
-  // 验证文件路径安全性
-  static isValidFilePath(path: string): SecurityCheckResult {
-    const result = createSecurityCheckResult(true);
-    
-    // 基本格式检查
-    if (!path || typeof path !== 'string') {
-      result.isValid = false;
-      result.errors.push('路径不能为空');
-      return result;
-    }
-
-    // 长度检查
-    if (path.length > DEFAULT_SECURITY_CONFIG.maxFileNameLength) {
-      result.isValid = false;
-      result.errors.push(`路径长度超过限制 (${DEFAULT_SECURITY_CONFIG.maxFileNameLength}字符)`);
-    }
-
-    // 正则表达式检查
-    if (!PATH_VALIDATION_REGEX.test(path)) {
-      result.isValid = false;
-      result.errors.push('路径包含非法字符');
-    }
-
-    // 黑名单模式检查
-    for (const pattern of PATH_BLACKLIST_PATTERNS) {
-      if (pattern.test(path)) {
-        result.isValid = false;
-        result.errors.push('路径包含危险模式');
-        break;
-      }
-    }
-
-    // 防止路径遍历
-    if (path.includes('../') || path.includes('..\\')) {
-      result.isValid = false;
-      result.errors.push('检测到路径遍历攻击尝试');
-    }
-
-    return result;
-  }
-
-  // 验证文件扩展名
-  static isValidFileExtension(ext: string): boolean {
-    return DEFAULT_SECURITY_CONFIG.allowedFileTypes.includes(ext.toLowerCase());
-  }
-
-  // 净化HTML内容，防止XSS攻击
-  static sanitizeHTML(html: string): string {
-    try {
-      // 配置DOMPurify选项
-      const cleanHTML = DOMPurify.sanitize(html, {
-        ALLOWED_TAGS: DEFAULT_SECURITY_CONFIG.allowedTags,
-        ALLOWED_ATTR: DEFAULT_SECURITY_CONFIG.allowedAttributes,
-        FORBID_TAGS: DEFAULT_SECURITY_CONFIG.forbiddenTags,
-        FORBID_ATTR: DEFAULT_SECURITY_CONFIG.forbiddenAttributes
-      });
-      return cleanHTML;
-    } catch (error) {
-      console.warn('HTML净化失败:', error);
-      return '<p>内容加载失败</p>';
-    }
-  }
-
-  // 安全的错误信息处理
-  static getSafeErrorMessage(originalError: string): string {
-    // 移除可能暴露系统信息的敏感内容
-    let safeError = originalError.replace(/(file:\/\/|\/[^\/].*?\.[^\/\s]+)/gi, '[文件路径]');
-    safeError = safeError.replace(/(localhost|127\.0\.0\.1|::1)/gi, '[本地地址]');
-    return safeError;
-  }
-
-  // 验证文件大小
-  static isValidFileSize(size: number): boolean {
-    return size <= DEFAULT_SECURITY_CONFIG.maxFileSize;
-  }
-}
+import { SecurityUtils, DEFAULT_SECURITY_CONFIG } from './security-config';
 
 interface FileObject {
-  name: string;
+  name?: string;
   file_type?: number;
   pdf_url?: string;
   content_text?: string;
@@ -114,6 +28,12 @@ interface CoerceReadList {
   fileList: FileObject[];
   fileStyle?: Record<string, string>;
   btnArr?: string[];
+  tipsText?: string;
+  delayConfig?: {
+    seconds: number;
+    buttonIndex?: number;
+    text?: string;
+  };
   btnStyle?: Record<string, string>[];
   btnBoxStyle?: Record<string, string>;
   showProgressInButton?: boolean | number;
@@ -151,6 +71,7 @@ interface ConfigOptions {
     loadingBarColor?: string;
     backgroundColor?: string;
   };
+  allowLinksAndImages?: boolean; // 是否允许 a/img 标签（默认 false）
 }
 
 interface ControlObject {
@@ -173,7 +94,9 @@ const myPopup = new Popup();
 class FilePreview {
   Configns: Required<ConfigOptions> & {
     listObj: Required<ListObject>;
-    coerceReadList: Required<CoerceReadList>;
+    coerceReadList: Omit<Required<CoerceReadList>, 'delayConfig'> & {
+      delayConfig?: NonNullable<CoerceReadList['delayConfig']>;
+    };
     fileKeyNameConfign: NonNullable<ConfigOptions['fileKeyNameConfign']>;
     useCanvasRender: boolean | 'auto';
     pdfJsPath: string;
@@ -184,6 +107,11 @@ class FilePreview {
     _isMobileDevice: boolean;
   };
   pdfjsLib: any = null;
+  private pdfDocCache: Map<string, any> = new Map();
+  private pdfLoadingCache: Map<string, { promise: Promise<any>; task: any }> = new Map();
+  private _delayTimer: number | null = null;
+  private _beforeUnloadHandler: (() => void) | null = null;
+  private _pageHideHandler: (() => void) | null = null;
 
   constructor(options: ConfigOptions) {
     // 默认配置
@@ -204,7 +132,6 @@ class FilePreview {
           // 可以扩展更多类型
         },
         fileKeyNameConfign: {
-          // 配置文件键值key 免于不同格式的数据转换 isConfignFileKeyName 为true,则fielKeyNameConfign为required;
           fileTitle: "name", //标题
           fileType: "doc_type", // 文件类型 1 富文本 2 pdf 3 引用文本,引用文本通常有多份
           filePdfUrl: "pdf_url", //  pdf地址 绝对路径
@@ -226,7 +153,7 @@ class FilePreview {
                 // 多份文件
                 {
                   name: "默认标题", //标题
-                  pdf_url: "clause_pdf: https://showFile.com/address.pdf", // pdf地址
+                  pdf_url: "https://showFile.com/address.pdf", // pdf地址
                   content_text: "disclaimer<p><strong>默认文件</strong></p>", // 富文本内容
                 },
               ],
@@ -251,6 +178,7 @@ class FilePreview {
         // 强制阅读弹窗参数
         coerceReadList: {
           titleText: "请阅读并同意以下文件",
+          tipsText: "请仔细阅读以下文件内容，阅读完毕后点击按钮继续。",
           fileList: [
             // 文件列表 require
             {
@@ -262,7 +190,7 @@ class FilePreview {
                 // 多份文件
                 {
                   name: "默认标题", //标题
-                  pdf_url: "clause_pdf: https://showFile.com/address.pdf", // pdf地址
+                  pdf_url: "https://showFile.com/address.pdf", // pdf地址
                   content_text: "disclaimer<p><strong>默认文件</strong></p>", // 富文本内容
                 },
               ],
@@ -290,7 +218,7 @@ class FilePreview {
           ],
         },
         isBindFileClick: false, // 是否需要绑定文件点击事件
-        useCanvasRender: false,
+        useCanvasRender: true,
         pdfJsPath: "./pdf.min.mjs",
         pdfWorkerPath: "./pdf.worker.min.mjs",
         enableMobileDetect: true,
@@ -303,6 +231,7 @@ class FilePreview {
           loadingBarColor: '#29AEEF',
           backgroundColor: '#ffffff'
         },
+        allowLinksAndImages: false, // 是否允许 a/img 标签（默认 false，更安全）
         _isMobileDevice: false,
       },
       options
@@ -314,6 +243,20 @@ class FilePreview {
 
     // 初始化模态框
     this.initModal();
+
+    // 页面销毁时清除缓存
+    this._beforeUnloadHandler = () => {
+      this.clearPdfCache();
+      this.destroy();
+    };
+    window.addEventListener('beforeunload', this._beforeUnloadHandler);
+
+    // 页面隐藏时清除缓存（移动端更可靠）
+    this._pageHideHandler = () => {
+      this.clearPdfCache();
+      this.destroy();
+    };
+    window.addEventListener('pagehide', this._pageHideHandler);
   }
 
   private _detectMobileDevice(): boolean {
@@ -338,6 +281,67 @@ class FilePreview {
     }
   }
 
+  private async _getPdfDocument(url: string, onProgress?: (progress: { loaded: number; total: number }) => void): Promise<any> {
+    // 已完成加载，直接返回
+    if (this.pdfDocCache.has(url)) {
+      if (onProgress) {
+        onProgress({ loaded: 1, total: 1 });
+      }
+      return this.pdfDocCache.get(url);
+    }
+
+    // 正在加载中，更新进度回调并返回同一个 promise
+    if (this.pdfLoadingCache.has(url)) {
+      const loading = this.pdfLoadingCache.get(url)!;
+      if (onProgress && loading.task) {
+        loading.task.onProgress = onProgress;
+      }
+      return loading.promise;
+    }
+
+    // 开始新的加载
+    await this._loadPdfJs();
+    const loadingTask = this.pdfjsLib.getDocument({ url });
+    if (onProgress) {
+      loadingTask.onProgress = onProgress;
+    }
+
+    const promise = loadingTask.promise.then((pdf: any) => {
+      this.pdfDocCache.set(url, pdf);
+      this.pdfLoadingCache.delete(url);
+      return pdf;
+    }).catch((error: any) => {
+      this.pdfLoadingCache.delete(url);
+      throw error;
+    });
+
+    this.pdfLoadingCache.set(url, { promise, task: loadingTask });
+    return promise;
+  }
+
+  clearPdfCache(): void {
+    this.pdfDocCache.forEach(pdf => {
+      if (pdf && typeof pdf.destroy === 'function') {
+        pdf.destroy();
+      }
+    });
+    this.pdfDocCache.clear();
+    this.pdfLoadingCache.clear();
+  }
+
+  destroy(): void {
+    this._clearDelayTimer();
+    this.clearPdfCache();
+    if (this._beforeUnloadHandler) {
+      window.removeEventListener('beforeunload', this._beforeUnloadHandler);
+      this._beforeUnloadHandler = null;
+    }
+    if (this._pageHideHandler) {
+      window.removeEventListener('pagehide', this._pageHideHandler);
+      this._pageHideHandler = null;
+    }
+  }
+
   private async _renderPdfWithCanvas(params: {
     file: FileObject;
     fromChooseList?: boolean;
@@ -352,8 +356,11 @@ class FilePreview {
       const loadingBarId = `loading-bar-${Date.now()}`;
       const html = `<div id="${containerId}" class="aggb-pdf-canvas" style="width:100%;height:auto;position:relative;background:${this.Configns.canvasRenderOptions.backgroundColor}">
         <div id="${loadingBarId}" class="aggb-pdf-loading-bar" style="position:absolute;top:0;left:0;width:100%;height:4px;background:#f0f0f0;z-index:999"><div class="progress aggb-pdf-progress" style="height:100%;width:0%;background:${this.Configns.canvasRenderOptions.loadingBarColor};transition:width 0.3s"></div></div>
-        <div class="pdf-canvas-container aggb-pdf-canvas-container" style="boxSizing:border-box;width:100%;height:100%;overflow:auto;-webkit-overflow-scrolling:touch;padding:10px"></div></div>`;
-      if (isCoerce) return `<div data-pdf-render-type="canvas" data-pdf-url="${file.pdf_url}" data-pdf-container-id="${containerId}" data-pdf-loading-bar-id="${loadingBarId}">${html}</div>`;
+        <div class="pdf-canvas-container aggb-pdf-canvas-container" style="box-sizing:border-box;width:100%;height:100%;overflow:auto;-webkit-overflow-scrolling:touch;padding:10px"></div></div>`;
+      if (isCoerce) {
+        const safePdfUrl = SecurityUtils.escapeHtml(file.pdf_url);
+        return `<div data-pdf-render-type="canvas" data-pdf-url="${safePdfUrl}" data-pdf-container-id="${containerId}" data-pdf-loading-bar-id="${loadingBarId}">${html}</div>`;
+      }
       popupInstance.showBottomPopup({
         title: file.name,
         content: html,
@@ -383,7 +390,8 @@ class FilePreview {
     const { file, fromChooseList = false, isControl = false, isCoerce = false } = params;
     const popupInstance = fromChooseList ? new Popup() : myPopup;
     const modifiedUrl = isControl ? file.pdf_url : `${file.pdf_url}#toolbar=0&navpanes=0&scrollbar=0`;
-    const html = `<iframe class="aggb-pdf-iframe" src="${modifiedUrl}" width="100%" height="800" style="border:none;"></iframe>`;
+    const safeUrl = SecurityUtils.escapeHtml(modifiedUrl);
+    const html = `<iframe class="aggb-pdf-iframe" src="${safeUrl}" width="100%" height="800" style="border:none;"></iframe>`;
     if (isCoerce) return html;
     popupInstance.showBottomPopup({ title: file.name, content: html, contentStyle: { padding: '0' }, contentBoxStyle: { maxHeight: '100vh' }, titleStyle: { fontWeight: 'bold' } });
   }
@@ -391,18 +399,15 @@ class FilePreview {
   private async _initPdfCanvas(url: string, containerId: string, loadingBarId: string): Promise<void> {
     try {
       if (!url || typeof url !== 'string') throw new Error('PDF URL 不能为空');
-      if (!this.pdfjsLib) throw new Error('PDF.js 未加载');
 
-      const loadingTask = this.pdfjsLib.getDocument({ url });
-      loadingTask.onProgress = (progress: { loaded: number; total: number }) => {
+      const pdf = await this._getPdfDocument(url, (progress: { loaded: number; total: number }) => {
         if (!progress.total) return;
         const progressBar = document.querySelector(`#${loadingBarId} .aggb-pdf-progress`);
         if (progressBar instanceof HTMLElement) {
           progressBar.style.width = `${Math.round((progress.loaded / progress.total) * 100)}%`;
         }
-      };
+      });
 
-      const pdf = await loadingTask.promise;
       const loadingBar = document.getElementById(loadingBarId);
       if (loadingBar) loadingBar.style.display = 'none';
       const container = document.querySelector(`#${containerId} .pdf-canvas-container`);
@@ -415,7 +420,8 @@ class FilePreview {
       const container = document.querySelector(`#${containerId} .pdf-canvas-container`);
       if (container) {
         const message = error instanceof Error ? SecurityUtils.getSafeErrorMessage(error.message) : '未知错误';
-        container.innerHTML = `<div class="aggb-pdf-error" style="text-align:center;padding:50px;color:#999"><p>PDF 加载失败</p><p style="font-size:12px">${message}</p></div>`;
+        const safeMessage = SecurityUtils.escapeHtml(message);
+        container.innerHTML = `<div class="aggb-pdf-error" style="text-align:center;padding:50px;color:#999"><p>PDF 加载失败</p><p style="font-size:12px">${safeMessage}</p></div>`;
       }
     }
   }
@@ -461,7 +467,11 @@ class FilePreview {
       this.Configns.listObj.fileList = this.dataChange(listObj.fileList);
     }
 
-    if (coerceReadList.fileList && coerceReadList.fileList.length > 0) {
+    if (
+      isConfignFileKeyName &&
+      coerceReadList.fileList &&
+      coerceReadList.fileList.length > 0
+    ) {
       this.Configns.coerceReadList.fileList = this.dataChange(
         coerceReadList.fileList
       );
@@ -509,8 +519,12 @@ class FilePreview {
     if (!ID) throw new Error("请传入需要添加的dom ID");
     if (fileList.length < 1) throw new Error("请传入需要渲染的文件数据");
 
-    let html = `${isCheckButton ? `<input class="aggb-file-list-checkbox" type="checkbox" id="${checkButtonID}" />` : ""
-      }${listText}`;
+    // 对用户输入进行 HTML 转义
+    const safeCheckButtonID = SecurityUtils.escapeHtml(checkButtonID);
+    const safeListText = SecurityUtils.escapeHtml(listText);
+
+    let html = `${isCheckButton ? `<input class="aggb-file-list-checkbox" type="checkbox" id="${safeCheckButtonID}" />` : ""
+      }${safeListText}`;
 
     for (let i = 0, len = fileList.length; i < len; i++) {
       const { name, pdf_url, file_type, styleStr } = fileList[i];
@@ -518,10 +532,13 @@ class FilePreview {
         file_type ||
         await this.judgeFileType({ type: "", file: fileList[i], index: i });
 
-      html += `<span class="pdfsee item-contract aggb-file-list-item" data-pdf="${file_type == 2 ? pdf_url : ""
-        }" data-title="${name}" data-index="${i}" data-type="${type}" style="${this.objToStr(
-          styleStr ? styleStr : fileStyle || {}
-        )}">${name}</span>`;
+      // 对用户输入进行 HTML 转义
+      const safeName = SecurityUtils.escapeHtml(name);
+      const safePdfUrl = SecurityUtils.escapeHtml(pdf_url || '');
+      const safeStyle = SecurityUtils.escapeHtml(this.objToStr(styleStr ? styleStr : fileStyle || {}));
+
+      html += `<span class="pdfsee item-contract aggb-file-list-item" data-pdf="${file_type == 2 ? safePdfUrl : ""
+        }" data-title="${safeName}" data-index="${i}" data-type="${type}" style="${safeStyle}">${safeName}</span>`;
     }
 
     const element = document.querySelector(ID);
@@ -604,7 +621,7 @@ class FilePreview {
     const popupInstance = fromChooseList ? new Popup() : myPopup;
 
     // 安全处理：净化HTML内容
-    const safeText = SecurityUtils.sanitizeHTML(text || '');
+    const safeText = SecurityUtils.sanitizeHTML(text || '', this.Configns.allowLinksAndImages);
 
     if (isCoerce) return safeText;
 
@@ -643,8 +660,12 @@ class FilePreview {
         file_type ||
         await this.judgeFileType({ type: "", file: fileArr[i], index: i });
 
-        html += `<dd class="cl aggb-pdf-choose-item" data-pdf="${pdf_url}" data-title="${name}" data-index="${i}" style="margin:0">
-          <span class="pdfsee item-contract aggb-pdf-choose-link" data-pdf="${pdf_url}" data-title="${name}" data-index="${i}" data-type="${type}">${name}</span>
+      // 对用户输入进行 HTML 转义
+      const safeName = SecurityUtils.escapeHtml(name);
+      const safePdfUrl = SecurityUtils.escapeHtml(pdf_url || '');
+
+        html += `<dd class="cl aggb-pdf-choose-item" data-pdf="${safePdfUrl}" data-title="${safeName}" data-index="${i}" style="margin:0">
+          <span class="pdfsee item-contract aggb-pdf-choose-link" data-pdf="${safePdfUrl}" data-title="${safeName}" data-index="${i}" data-type="${type}">${safeName}</span>
         </dd>`;
     }
 
@@ -691,10 +712,11 @@ class FilePreview {
       ? url
       : `${url}#toolbar=0&navpanes=0&scrollbar=0`;
 
-    const iframeHtml = `<iframe class="aggb-pdf-iframe" src="${modifiedUrl}" width="100%" height="800" style="border:none;"></iframe>`;
-    const objectHtml = `<object class="aggb-pdf-object" data="${modifiedUrl}" type="application/pdf" width="100%" height="800">
-    <p>您的浏览器不支持PDF查看。请<a href="${modifiedUrl}">下载文件</a>。</p></object>`;
-    const embedHtml = `<embed class="aggb-pdf-embed" src="${modifiedUrl}" type="application/pdf" width="100%" height="800" />`;
+    const safeUrl = SecurityUtils.escapeHtml(modifiedUrl);
+    const iframeHtml = `<iframe class="aggb-pdf-iframe" src="${safeUrl}" width="100%" height="800" style="border:none;"></iframe>`;
+    const objectHtml = `<object class="aggb-pdf-object" data="${safeUrl}" type="application/pdf" width="100%" height="800">
+    <p>您的浏览器不支持PDF查看。请<a href="${safeUrl}">下载文件</a>。</p></object>`;
+    const embedHtml = `<embed class="aggb-pdf-embed" src="${safeUrl}" type="application/pdf" width="100%" height="800" />`;
 
     const html =
       divType === "iframe"
@@ -762,7 +784,9 @@ class FilePreview {
       btnBoxStyle,
       coerceCallBack,
       titleText,
-      showProgressInButton
+      tipsText,
+      showProgressInButton,
+      delayConfig
     } = this.Configns.coerceReadList;
 
     if (fileList.length === 0) throw new Error("fileList不能为空");
@@ -773,6 +797,7 @@ class FilePreview {
     let visitedIndices = [0];
     const showNextFile = async (_btnTitleArr?: string[]): Promise<void> => {
       if (currentIndex >= fileList.length) return;
+      this._clearDelayTimer();
 
       const file = fileList[currentIndex];
       const isLastFile = currentIndex === fileList.length - 1;
@@ -867,11 +892,21 @@ class FilePreview {
 
       // 为每个按钮创建回调函数
       const callbacks: (() => void)[] = [];
+      const delaySeconds = delayConfig && Number.isFinite(delayConfig.seconds) && delayConfig.seconds > 0
+        ? Math.ceil(delayConfig.seconds)
+        : 0;
+      const configuredButtonIndex = delayConfig?.buttonIndex;
+      const targetButtonIndex: number = Number.isInteger(configuredButtonIndex) && configuredButtonIndex !== undefined && configuredButtonIndex >= 0
+        ? configuredButtonIndex
+        : 0;
+      const delayMessage = delayConfig?.text || "请等待 {seconds} 秒";
+      let nextButtonReady = delaySeconds === 0;
       if (btnArr && btnArr.length > 0) {
         for (let i = 0; i < btnArr.length; i++) {
           callbacks.push(
             ((buttonIndex) => {
               return () => {
+                if (buttonIndex === targetButtonIndex && !nextButtonReady) return false;
                 if (typeof coerceCallBack === "function") {
                   return coerceCallBack(control, buttonIndex);
                 } else if (
@@ -907,13 +942,24 @@ class FilePreview {
           finalButtons[0] = `${btnArr[0]}(${currentDisplayIndex}/${totalLength})`;
         }
       }
-      console.log("showNextFile", btnArr, finalButtons);
 
+      const delayedButtonTitle = finalButtons[targetButtonIndex];
+      const hasDelay = delayConfig !== undefined && delaySeconds > 0 && !customButtonTitles && delayedButtonTitle !== undefined;
+      if (hasDelay) {
+        finalButtons = [...finalButtons];
+        finalButtons[targetButtonIndex] = delayMessage.replace('{seconds}', String(delaySeconds));
+      }
+      console.log("showNextFile", btnArr, finalButtons);
+      const safeTipsText = tipsText ? SecurityUtils.escapeHtml(tipsText) : '';
       const popupConfig = {
         title:
           file.name ||
           `${titleText || "文件"} (${currentIndex + 1}/${fileList.length})`,
-        content: fileContent,
+        content: safeTipsText ? `<div class="aggb-tips-wrapper" style="display: flex;flex-direction: column;height: 100%;overflow:hidden;">
+        <p class="aggb-tips-content" style="width: 100%;padding: 10px;background: #FFE7E5;color: #FF3B30;margin:0;box-sizing: border-box;flex-shrink: 0;">${safeTipsText}</p>
+        <div class="aggb-file-content" style="flex: 1;overflow-y: auto;padding: ${file.file_type === 2 ? '0' : '0 20px'};">${fileContent}</div>
+        </div>` : fileContent,
+        contentStyle: tipsText ? { padding: '0' } : undefined,
         btnBoxStyle: btnBoxStyle || {
           display: "flex",
           justifyContent: "space-around",
@@ -952,7 +998,28 @@ class FilePreview {
 
       control.setCheckboxChecked(false);
 
-      myPopup.showBottomPopup(popupConfig);
+      // 判断弹窗是否已打开，决定使用 showBottomPopup 还是 switchContent
+      if (myPopup.isShowing) {
+        // 弹窗已打开，直接切换内容（不触发动画）
+        myPopup.switchContent({
+          title: popupConfig.title,
+          content: popupConfig.content,
+          btns: popupConfig.btns,
+          callbacks: popupConfig.callbacks,
+          btnStyle: popupConfig.btnStyle,
+        });
+      } else {
+        // 弹窗未打开，首次显示
+        myPopup.showBottomPopup(popupConfig);
+      }
+
+      if (hasDelay) {
+        const button = document.querySelectorAll('.aggb-popup-button')[targetButtonIndex];
+        if (button instanceof HTMLElement) {
+          button.style.cursor = 'not-allowed';
+          button.style.opacity = '0.6';
+        }
+      }
 
       const canvasRoot = document.querySelector('[data-pdf-render-type="canvas"]');
       if (canvasRoot instanceof HTMLElement) {
@@ -960,7 +1027,25 @@ class FilePreview {
         const loadingBarId = canvasRoot.dataset.pdfLoadingBarId;
         const pdfUrl = canvasRoot.dataset.pdfUrl;
         if (containerId && loadingBarId && pdfUrl) {
-          setTimeout(() => this._initPdfCanvas(pdfUrl, containerId, loadingBarId), 100);
+          setTimeout(async () => {
+            await this._initPdfCanvas(pdfUrl, containerId, loadingBarId);
+            if (hasDelay) {
+              this._startDelayCountdown(delaySeconds, delayMessage, delayedButtonTitle, targetButtonIndex, () => { nextButtonReady = true; });
+            }
+          }, 100);
+        }
+      } else {
+        const iframe = document.querySelector('.aggb-pdf-iframe') as HTMLIFrameElement | null;
+        if (iframe) {
+          iframe.onload = () => {
+            if (hasDelay) {
+              this._startDelayCountdown(delaySeconds, delayMessage, delayedButtonTitle, targetButtonIndex, () => { nextButtonReady = true; });
+            }
+          };
+        } else {
+          if (hasDelay) {
+            this._startDelayCountdown(delaySeconds, delayMessage, delayedButtonTitle, targetButtonIndex, () => { nextButtonReady = true; });
+          }
         }
       }
 
@@ -972,123 +1057,150 @@ class FilePreview {
     await showNextFile();
   }
 
-  // 加载文件内容
-  loadFile(filePath: string): void {
-    // 安全验证：检查文件路径
-    const pathValidation = SecurityUtils.isValidFilePath(filePath);
-    if (!pathValidation.isValid) {
-      console.error("文件路径验证失败:", pathValidation.errors.join(', '));
-      myPopup.showBottomPopup({
-        title: "文件加载失败",
-        content: `<p class="aggb-file-error" style="color: red;">文件路径验证失败: ${pathValidation.errors.join(', ')}</p>`,
-        callbacks: [function () {
-          console.log("路径验证失败弹窗关闭");
-        }],
-      });
-      return;
+  private _clearDelayTimer(): void {
+    if (this._delayTimer !== null) {
+      window.clearInterval(this._delayTimer);
+      this._delayTimer = null;
     }
+  }
 
-    // CSRF防护：检查请求来源
-    if (typeof window !== 'undefined' && window.location) {
-      const currentOrigin = window.location.origin;
-      try {
-        const fileUrl = new URL(filePath, currentOrigin);
-        if (fileUrl.origin !== currentOrigin && !filePath.startsWith('http')) {
-          console.warn("跨域文件请求:", filePath);
-          // 可以在这里添加额外的跨域验证逻辑
+  private _startDelayCountdown(
+    delaySeconds: number,
+    delayMessage: string,
+    delayedButtonTitle: string,
+    targetButtonIndex: number,
+    onComplete: () => void
+  ): void {
+    this._clearDelayTimer();
+    let remainingSeconds = delaySeconds;
+    const button = document.querySelectorAll('.aggb-popup-button')[targetButtonIndex];
+    if (button instanceof HTMLElement) {
+      button.style.cursor = 'not-allowed';
+      button.style.opacity = '0.6';
+    }
+    this._delayTimer = window.setInterval(() => {
+      remainingSeconds--;
+      if (button instanceof HTMLElement) {
+        button.textContent = remainingSeconds > 0
+          ? delayMessage.replace('{seconds}', String(remainingSeconds))
+          : delayedButtonTitle;
+        button.style.cursor = remainingSeconds > 0 ? 'not-allowed' : 'pointer';
+        button.style.opacity = remainingSeconds > 0 ? '0.6' : '1';
+      }
+      if (remainingSeconds <= 0) {
+        onComplete();
+        this._clearDelayTimer();
+      }
+    }, 1000);
+  }
+
+  // 加载文件内容
+  // 支持两种调用方式：
+  // 1. loadFile(filePath, title?) - 简单方式，通过 URL 加载 PDF/TXT/HTML
+  // 2. loadFile(fileObject) - 完整方式，支持所有文件类型（富文本、PDF、引用文本）
+  async loadFile(fileOrPath: string | FileObject, title?: string): Promise<void> {
+    // 如果是字符串，走简单方式（向后兼容）
+    if (typeof fileOrPath === 'string') {
+      const filePath = fileOrPath;
+      
+      // 判断是否为 HTTP/HTTPS URL
+      const isHttpUrl = /^https?:\/\//i.test(filePath);
+      
+      // 安全验证：只对本地路径进行验证，HTTP URL 跳过
+      if (!isHttpUrl) {
+        const pathValidation = SecurityUtils.isValidFilePath(filePath);
+        if (!pathValidation.isValid) {
+          console.error("文件路径验证失败:", pathValidation.errors.join(', '));
+          myPopup.msg(`文件路径验证失败: ${pathValidation.errors.join(', ')}`);
+          return;
         }
-      } catch (e) {
-        console.error("URL解析失败:", e);
-        myPopup.showBottomPopup({
-          title: "文件加载失败",
-          content: `<p class="aggb-file-error" style="color: red;">文件URL格式不正确</p>`,
-          callbacks: [function () {
-            console.log("URL验证失败弹窗关闭");
-          }],
-        });
+      }
+
+      // CSRF防护：检查请求来源
+      if (typeof window !== 'undefined' && window.location) {
+        const currentOrigin = window.location.origin;
+        try {
+          const fileUrl = new URL(filePath, currentOrigin);
+          if (fileUrl.origin !== currentOrigin && !filePath.startsWith('http')) {
+            console.warn("跨域文件请求:", filePath);
+          }
+        } catch (e) {
+          console.error("URL解析失败:", e);
+          myPopup.msg("文件URL格式不正确");
+          return;
+        }
+      }
+
+      const fileExtension = filePath.split(".").pop()?.toLowerCase();
+      
+      // 安全验证：检查文件扩展名
+      if (!fileExtension || !SecurityUtils.isValidFileExtension(fileExtension)) {
+        console.error("不支持的文件类型:", fileExtension);
+        myPopup.msg(`不支持的文件类型: ${fileExtension || '未知'}`);
         return;
       }
-    }
 
-    const fileExtension = filePath.split(".").pop()?.toLowerCase();
-    
-    // 安全验证：检查文件扩展名
-    if (!fileExtension || !SecurityUtils.isValidFileExtension(fileExtension)) {
-      console.error("不支持的文件类型:", fileExtension);
-      myPopup.showBottomPopup({
-        title: "文件加载失败",
-        content: `<p class="aggb-file-error" style="color: red;">不支持的文件类型: ${fileExtension || '未知'}</p>`,
-        callbacks: [function () {
-          console.log("文件类型验证失败弹窗关闭");
-        }],
-      });
-      return;
-    }
+      const fileName = title || filePath.split("/").pop() || "文件";
 
-    const contentType = this.Configns.fileTypes[fileExtension];
-    const fileName = filePath.split("/").pop() || "文件";
+      // 根据扩展名判断文件类型
+      let fileType: number;
+      let fileContent = '';
+      let fileUrl = '';
 
-    if (contentType === "application/pdf") {
-      // 对于PDF文件，直接使用iframe，避免CORS问题
-      myPopup.showBottomPopup({
-        title: fileName,
-        content: `<iframe class="aggb-file-pdf-iframe" src="${filePath}" width="100%" height="600px" style="border:none;"></iframe>`,
-        contentStyle: {},
-        titleStyle: {
-          fontWeight: "bold",
-        },
-        callbacks: [function () {
-          console.log("loadFile callback");
-        }],
-      });
-    } else {
-      // 对于其他文件类型，仍然使用fetch
-      fetch(filePath)
-        .then((response) => {
+      if (fileExtension === 'pdf') {
+        fileType = 2;
+        fileUrl = filePath;
+      } else if (fileExtension === 'txt' || fileExtension === 'html' || fileExtension === 'htm') {
+        fileType = 1;
+        try {
+          const response = await fetch(filePath);
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
-          return response.text();
-        })
-        .then((data) => {
-          // 根据文件类型决定展示方式
-          let content: string;
+          fileContent = await response.text();
           if (fileExtension === 'html' || fileExtension === 'htm') {
-            // 对于HTML文件，进行安全净化后再显示
-            const safeData = SecurityUtils.sanitizeHTML(data);
-            content = `<div class="aggb-file-html-content" style="max-height: 70vh; overflow-y: auto;">${safeData}</div>`;
-          } else {
-            // 对于文本文件，使用<pre>标签保持格式
-            content = `<pre class="aggb-file-text-content" style="white-space: pre-wrap; word-wrap: break-word; max-height: 70vh; overflow-y: auto;">${data}</pre>`;
+            fileContent = SecurityUtils.sanitizeHTML(fileContent, this.Configns.allowLinksAndImages);
           }
-          myPopup.showBottomPopup({
-            title: fileName,
-            content: content,
-            contentStyle: {
-              maxHeight: "70vh",
-              overflow: "auto",
-            },
-            titleStyle: {
-              fontWeight: "bold",
-            },
-            callbacks: [function () {
-              console.log("文件内容弹窗关闭");
-            }],
-          });
-        })
-        .catch((error) => {
+        } catch (error) {
           console.error("文件加载失败:", error);
-          // 显示安全的错误信息
-          const safeErrorMessage = SecurityUtils.getSafeErrorMessage(error.message);
-          myPopup.showBottomPopup({
-            title: "文件加载失败",
-            content: `<p class="aggb-file-error" style="color: red;">无法加载文件</p><p class="aggb-file-error-detail">错误详情: ${safeErrorMessage}</p>`,
-            callbacks: [function () {
-              console.log("错误提示弹窗关闭");
-            }],
-          });
-        });
+          const safeErrorMessage = SecurityUtils.getSafeErrorMessage(error instanceof Error ? error.message : String(error));
+          myPopup.msg(`无法加载文件: ${safeErrorMessage}`);
+          return;
+        }
+      } else {
+        fileType = 2;
+        fileUrl = filePath;
+      }
+
+      const file: FileObject = {
+        name: fileName,
+        file_type: fileType,
+        pdf_url: fileUrl,
+        content_text: fileContent
+      };
+
+      await this.judgeFileType({ type: fileType, file });
+      return;
     }
+
+    // 如果是对象，走完整方式
+    const file = fileOrPath;
+    
+    // 如果没有 name，自动从 pdf_url 提取
+    if (!file.name) {
+      if (file.pdf_url) {
+        file.name = file.pdf_url.split('/').pop() || '文件';
+      } else {
+        file.name = '文件';
+      }
+    }
+
+    // 如果没有指定 file_type，自动判断
+    if (!file.file_type) {
+      file.file_type = await this.judgeFileType({ type: "", file }) as number;
+    }
+
+    await this.judgeFileType({ type: file.file_type, file });
   }
 }
 

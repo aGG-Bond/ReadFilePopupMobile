@@ -1,6 +1,6 @@
 module.exports = {
   preset: 'ts-jest',
-  testEnvironment: 'node',
+  testEnvironment: 'jsdom',
   testMatch: ['**/test/**/*.test.(ts|tsx|js)'],
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',

@@ -38,11 +38,55 @@ const allowedFileTypes = ['pdf', 'txt', 'html', 'htm'];
 // 禁止: exe, js, php, asp, jsp 等可执行文件
 ```
 
+### 链接与图片控制 (allowLinksAndImages)
+
+```javascript
+// 默认模式：过滤 a/img 标签（更安全）
+new FilePreview({
+  allowLinksAndImages: false  // 默认值
+});
+
+// 允许模式：显示链接和图片
+new FilePreview({
+  allowLinksAndImages: true
+});
+```
+
+**工作原理：**
+- `false`（默认）：从允许列表中移除 `a`、`img` 标签及 `href`、`src` 等属性
+- `true`：保留这些标签，允许富文本中显示链接和图片
+
+**使用场景：**
+- 协议文档包含外部链接 → 设为 `true`
+- 协议文档包含图片说明 → 设为 `true`
+- 内容来源不可信 → 保持 `false`（默认）
+
 ### HTML净化规则
+
 ```typescript
-ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'ol', 'ul', 'li', 'h1-h6']
-FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input']
-FORBID_ATTR: ['onload', 'onclick', 'onerror', 'onmouseover']
+// 基础允许标签
+ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 's', 'sub', 'sup', 
+               'h1-h6', 'span', 'div', 'blockquote', 'pre', 'code',
+               'ol', 'ul', 'li', 'table', 'thead', 'tbody', 'tr', 'th', 'td']
+
+// 动态标签（根据 allowLinksAndImages 配置）
+// allowLinksAndImages: false（默认）→ 过滤 a、img 标签
+// allowLinksAndImages: true → 允许 a、img 标签
+
+// 允许的属性
+ALLOWED_ATTR: ['style', 'class', 'id', 'colspan', 'rowspan']
+// allowLinksAndImages: true 时额外允许: 'href', 'target', 'rel', 'src', 'alt', 'width', 'height'
+
+// 始终禁止的标签
+FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input', 
+              'textarea', 'button', 'select', 'option', 'style', 'meta', 
+              'link', 'video', 'audio', 'source']
+
+// 始终禁止的属性（事件处理器）
+FORBID_ATTR: ['onload', 'onclick', 'onerror', 'onmouseover', 'onsubmit', 
+              'onchange', 'onfocus', 'onblur', 'onkeydown', 'onkeyup', 
+              'onkeypress', 'onmouseout', 'onmousedown', 'onmouseup', 
+              'ondblclick', 'oncontextmenu']
 ```
 
 ## 🚀 最佳安全实践

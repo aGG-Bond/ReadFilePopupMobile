@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ReadFilePopupMobile Canvas Demo</title>
+  <title>ReadFilePopupMobile 功能测试</title>
   <style>
     body {
       max-width: 760px;
@@ -16,6 +16,13 @@
 
     h1 {
       margin-top: 0;
+    }
+
+    h2 {
+      font-size: 18px;
+      margin-top: 24px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #1769aa;
     }
 
     .panel {
@@ -52,93 +59,316 @@
     #status {
       min-height: 24px;
       color: #5f6368;
+      margin-top: 10px;
+    }
+
+    .note {
+      background: #e6f7ff;
+      border-left: 4px solid #1890ff;
+      padding: 12px 15px;
+      margin: 15px 0;
+      border-radius: 0 8px 8px 0;
+      font-size: 13px;
+    }
+
+    .note.warning {
+      background: #fff7e6;
+      border-left-color: #fa8c16;
     }
   </style>
 </head>
 
 <body>
-  <h1>Canvas PDF 渲染测试</h1>
+  <h1>📱 ReadFilePopupMobile 功能测试</h1>
 
+  <!-- 1. PDF 渲染模式 -->
+  <h2>1. PDF 渲染模式</h2>
   <div class="panel">
-    <p>本页面使用本地构建产物和 <code>dist/pdf*.js</code>，不依赖 CDN。</p>
-    <button id="canvas">强制使用 Canvas</button>
-    <button id="auto">自动检测移动设备</button>
-    <button id="iframe" class="secondary">使用 iframe</button>
+    <p>选择不同渲染模式预览 PDF 文件：</p>
+    <button id="canvas">Canvas 渲染</button>
+    <button id="auto">自动检测</button>
+    <button id="iframe" class="secondary">iframe 渲染</button>
     <p id="status">请选择一种预览模式。</p>
+  </div>
+
+  <!-- 2. 文件预览 -->
+  <h2>2. 文件预览</h2>
+  <div class="panel">
+    <p>预览不同类型的文件：</p>
+    <button id="previewPdf">预览 PDF</button>
+    <button id="previewRichText">预览富文本</button>
+    <button id="previewQuote">预览引用文本</button>
+  </div>
+
+  <!-- 3. 强制阅读 -->
+  <h2>3. 强制阅读</h2>
+  <div class="panel">
+    <p>强制阅读弹窗（多文件）：</p>
+    <button id="coerceBasic">基本强制阅读</button>
+    <button id="coerceProgress">带进度显示</button>
+  </div>
+
+  <!-- 4. 延迟配置 -->
+  <h2>4. 延迟配置</h2>
+  <div class="panel">
+    <p>按钮倒计时功能（文件加载完成后开始计时）：</p>
+    <button id="delayDemo">5秒延迟</button>
+    <button id="delay10">10秒延迟</button>
+  </div>
+
+  <!-- 5. 提示信息 -->
+  <h2>5. 提示信息 (tipsText)</h2>
+  <div class="panel">
+    <p>弹窗顶部显示提示信息：</p>
+    <button id="tipsDemo">带提示的弹窗</button>
+    <div class="note">
+      tipsText 会自动 HTML 转义，防止 XSS 攻击
+    </div>
+  </div>
+
+  <!-- 6. PDF 缓存 -->
+  <h2>6. PDF 缓存</h2>
+  <div class="panel">
+    <p>演示 PDF 缓存机制：</p>
+    <button id="cacheFirst">第一次加载</button>
+    <button id="cacheSecond">第二次加载（缓存）</button>
+    <button id="clearCache" class="secondary">清除缓存</button>
+    <div class="note">
+      同一 PDF 只下载一次，加载中关闭再打开会复用加载任务
+    </div>
+  </div>
+
+  <!-- 7. 文件列表 -->
+  <h2>7. 文件列表</h2>
+  <div class="panel">
+    <p>渲染文件列表并绑定点击事件：</p>
+    <div id="fileList"></div>
   </div>
 
   <script type="module">
     import FilePreview from "/dist/ReadFilePopupMobile.es.js";
 
     const pdfUrl = "https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf";
-    // const localPdfJs = "/dist/pdf.min.mjs";
-    // const localPdfWorker = "/dist/pdf.worker.min.mjs";
-    const localPdfJs = "";
-    const localPdfWorker = "";
     const status = document.querySelector("#status");
-    const preview1 = new FilePreview({
-      useCanvasRender: 'auto',
-      coerceReadList: {
-        fileList: [
-          {
-            "name": "《测试文档》",
-            // "doc_type": 1,
-            "pdf_url": "",
-            "com_terms": [],
-            "content_text": "<p>这是第一个测试文档的内容。用于验证富文本显示功能。</p>"
-          },
-          {
-            "name": "《免责条款》",
-            // "doc_type": 1,
-            "pdf_url": "",
-            "com_terms": "",
-            "content_text": "<p><strong>免责条款</strong></p><p>1. 免责条款内容...</p>"
-          },{
-            "name": "《隐私政策》",
-            "pdf_url": "https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf",
-          }
-        ],
-        btnArr: ['同意并继续', '拒绝'],
-        showProgressInButton: true,
-        coerceCallBack: (control, buttonIndex) => {
-          switch (buttonIndex) {
-            case 0:
-              if (control.isLastFile()) {
-                control.setCheckboxChecked(true);
-                alert('已完成所有文件阅读！');
-              } else {
-                control.next();
-                return false;
-              }
-              break;
-            case 1:
-              control.close();
-              break;
-          }
-        }
-      },
 
-    })
-preview1.openCoerceReadPopup()
+    // ========== 1. PDF 渲染模式 ==========
     function openPreview(mode) {
-      const preview = new FilePreview({
-        useCanvasRender: mode,
-        // pdfJsPath: localPdfJs,
-        // pdfWorkerPath: localPdfWorker
-      });
+      const preview = new FilePreview({ useCanvasRender: mode });
       status.textContent = `当前模式：${mode === true ? "Canvas" : mode === "auto" ? "自动检测" : "iframe"}`;
-      preview.judgeFileType({
-        type: 2,
-        file: { name: "PDF.js 测试文档", file_type: 2, pdf_url: pdfUrl, content_text: "" }
+      preview.loadFile({
+        name: "PDF.js 测试文档",
+        file_type: 2,
+        pdf_url: pdfUrl
       }).catch((error) => {
         status.textContent = `加载失败：${error.message}`;
-        console.error(error);
       });
     }
 
     document.querySelector("#canvas").addEventListener("click", () => openPreview(true));
     document.querySelector("#auto").addEventListener("click", () => openPreview("auto"));
     document.querySelector("#iframe").addEventListener("click", () => openPreview(false));
+
+    // ========== 2. 文件预览 ==========
+    document.querySelector("#previewPdf").addEventListener("click", () => {
+      const preview = new FilePreview({});
+      preview.loadFile(pdfUrl, "PDF 文档");
+    });
+
+    document.querySelector("#previewRichText").addEventListener("click", () => {
+      const preview = new FilePreview({});
+      preview.loadFile({
+        name: "用户协议",
+        file_type: 1,
+        content_text: "<h2>用户协议</h2><p>欢迎使用我们的服务...</p><p><strong>重要条款</strong>请仔细阅读。</p>"
+      });
+    });
+
+    document.querySelector("#previewQuote").addEventListener("click", () => {
+      const preview = new FilePreview({});
+      preview.loadFile({
+        name: "服务条款",
+        file_type: 3,
+        com_terms: [
+          { name: "条款一：用户协议", file_type: 1, content_text: "<h2>条款一</h2><p>用户协议内容...</p>" },
+          { name: "条款二：隐私政策", file_type: 2, pdf_url: pdfUrl }
+        ]
+      });
+    });
+
+    // ========== 3. 强制阅读 ==========
+    document.querySelector("#coerceBasic").addEventListener("click", () => {
+      const preview = new FilePreview({
+        coerceReadList: {
+          titleText: "请阅读以下文件",
+          fileList: [
+            { name: "用户协议", file_type: 1, content_text: "<h2>用户协议</h2><p>欢迎使用我们的服务...</p>" },
+            { name: "隐私政策", file_type: 2, pdf_url: pdfUrl }
+          ],
+          btnArr: ["同意并继续", "拒绝"],
+          coerceCallBack: (control, buttonIndex) => {
+            if (buttonIndex === 0) {
+              if (control.isLastFile()) {
+                alert("已完成所有文件阅读！");
+                control.close();
+              } else {
+                control.next();
+                return false;
+              }
+            } else {
+              control.close();
+            }
+          }
+        }
+      });
+      preview.openCoerceReadPopup();
+    });
+
+    document.querySelector("#coerceProgress").addEventListener("click", () => {
+      const preview = new FilePreview({
+        coerceReadList: {
+          titleText: "请阅读以下文件",
+          fileList: [
+            { name: "用户协议", file_type: 1, content_text: "<h2>用户协议</h2><p>协议内容...</p>" },
+            { name: "免责条款", file_type: 1, content_text: "<h2>免责条款</h2><p>条款内容...</p>" },
+            { name: "隐私政策", file_type: 2, pdf_url: pdfUrl }
+          ],
+          btnArr: ["同意并继续", "拒绝"],
+          showProgressInButton: true,
+          coerceCallBack: (control, buttonIndex) => {
+            if (buttonIndex === 0) {
+              if (control.isLastFile()) {
+                alert("已完成所有文件阅读！");
+                control.close();
+              } else {
+                control.next();
+                return false;
+              }
+            } else {
+              control.close();
+            }
+          }
+        }
+      });
+      preview.openCoerceReadPopup();
+    });
+
+    // ========== 4. 延迟配置 ==========
+    document.querySelector("#delayDemo").addEventListener("click", () => {
+      const preview = new FilePreview({
+        coerceReadList: {
+          titleText: "请阅读以下文件",
+          tipsText: "倒计时结束后才能点击同意",
+          fileList: [
+            { name: "用户协议", file_type: 1, content_text: "<h2>用户协议</h2><p>协议内容...</p>" }
+          ],
+          btnArr: ["同意", "拒绝"],
+          delayConfig: {
+            seconds: 5,
+            buttonIndex: 0,
+            text: "请阅读 {seconds} 秒"
+          },
+          coerceCallBack: (control, buttonIndex) => {
+            if (buttonIndex === 0) {
+              alert("已同意！");
+              control.close();
+            } else {
+              control.close();
+            }
+          }
+        }
+      });
+      preview.openCoerceReadPopup();
+    });
+
+    document.querySelector("#delay10").addEventListener("click", () => {
+      const preview = new FilePreview({
+        coerceReadList: {
+          titleText: "请阅读以下文件",
+          tipsText: "请仔细阅读，10秒后才能点击同意",
+          fileList: [
+            { name: "用户协议", file_type: 1, content_text: "<h2>用户协议</h2><p>协议内容...</p>" },
+            { name: "隐私政策", file_type: 2, pdf_url: pdfUrl }
+          ],
+          btnArr: ["同意", "拒绝"],
+          delayConfig: {
+            seconds: 10,
+            buttonIndex: 0,
+            text: "等待 {seconds} 秒"
+          },
+          showProgressInButton: true,
+          coerceCallBack: (control, buttonIndex) => {
+            if (buttonIndex === 0) {
+              if (control.isLastFile()) {
+                alert("已同意！");
+                control.close();
+              } else {
+                control.next();
+                return false;
+              }
+            } else {
+              control.close();
+            }
+          }
+        }
+      });
+      preview.openCoerceReadPopup();
+    });
+
+    // ========== 5. 提示信息 ==========
+    document.querySelector("#tipsDemo").addEventListener("click", () => {
+      const preview = new FilePreview({
+        coerceReadList: {
+          titleText: "服务条款",
+          tipsText: "请仔细阅读以下文件内容，阅读完毕后点击按钮继续。",
+          fileList: [
+            { name: "用户协议", file_type: 1, content_text: "<h2>用户协议</h2><p>协议内容...</p>" }
+          ],
+          btnArr: ["我已阅读并同意", "不同意"],
+          coerceCallBack: (control, buttonIndex) => {
+            control.close();
+          }
+        }
+      });
+      preview.openCoerceReadPopup();
+    });
+
+    // ========== 6. PDF 缓存 ==========
+    let cachePreview = null;
+
+    document.querySelector("#cacheFirst").addEventListener("click", () => {
+      cachePreview = new FilePreview({});
+      console.log("第一次加载 PDF...");
+      cachePreview.loadFile(pdfUrl, "PDF 文档");
+    });
+
+    document.querySelector("#cacheSecond").addEventListener("click", () => {
+      cachePreview = new FilePreview({});
+      console.log("第二次加载 PDF（应该命中缓存）...");
+      cachePreview.loadFile(pdfUrl, "PDF 文档");
+    });
+
+    document.querySelector("#clearCache").addEventListener("click", () => {
+      if (cachePreview) {
+        cachePreview.clearPdfCache();
+        alert("缓存已清除");
+      }
+    });
+
+    // ========== 7. 文件列表 ==========
+    const listPreview = new FilePreview({
+      isDrawFileList: true,
+      listObj: {
+        listId: "#fileList",
+        fileList: [
+          { name: "用户协议", file_type: 1, content_text: "<h2>用户协议</h2><p>协议内容...</p>" },
+          { name: "隐私政策", file_type: 2, pdf_url: pdfUrl }
+        ],
+        isCheckButton: true,
+        checkCallBack: (isChecked) => {
+          console.log("复选框状态：", isChecked);
+        }
+      }
+    });
   </script>
 </body>
 
