@@ -1,6 +1,6 @@
 {
   "name": "@aggbond/my-file-preview-mobile",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "publishConfig": {
     "provenance": false,
     "access": "public"
