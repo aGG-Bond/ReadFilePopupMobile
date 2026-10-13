@@ -150,15 +150,43 @@ new FilePreview({ useCanvasRender: false });
 new FilePreview({ useCanvasRender: 'auto' });
 ```
 
-CDN 使用时需配置 PDF.js 路径：
+如果你需要兼容旧版 iOS（如 iOS 18 以下），建议显式配置 PDF.js 的主模块和 Worker 版本：
 ```js
+const isLegacyIOS = /iPhone|iPad/i.test(navigator.userAgent) && !(/OS 18|OS 19|OS 20/i.test(navigator.userAgent));
+
 new FilePreview({
   useCanvasRender: true,
-  pdfJsPath: 'https://cdn.jsdelivr.net/npm/@aggbond/my-file-preview-mobile@latest/dist/ReadFilePopupMobile.umd.min.js'
+  pdfJsPath: isLegacyIOS
+    ? 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.mjs'
+    : 'https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/legacy/build/pdf.mjs',
+  pdfWorkerPath: isLegacyIOS
+    ? 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.worker.min.mjs'
+    : 'https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/legacy/build/pdf.worker.min.mjs'
 });
 ```
 
-> Worker 已内联到主文件中，无需额外配置。如需自定义 Worker 路径，可通过 `pdfWorkerPath` 覆盖。
+### 外置 PDF.js 下载地址
+
+如果你想自己托管或直接使用 CDN，可以使用下面这些地址：
+
+```js
+// legacy（兼容老 Safari / iOS 18 以下）
+const legacyPdfJsPath = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.mjs';
+const legacyPdfWorkerPath = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.worker.min.mjs';
+
+// modern（当前默认推荐）
+const modernPdfJsPath = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/legacy/build/pdf.mjs';
+const modernPdfWorkerPath = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/legacy/build/pdf.worker.min.mjs';
+```
+
+如果你部署在自己的站点，也可以直接从本地 `node_modules` 目录引用：
+
+```js
+const localPdfJsPath = '/node_modules/pdfjs-dist/legacy/build/pdf.mjs';
+const localPdfWorkerPath = '/node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs';
+```
+
+> 这个插件不会在模块初始化时强制静态引入 PDF.js；你可以在业务层按设备或运行环境选择对应版本。若不设置 `pdfJsPath`，默认会继续走内置 `pdfjs-dist` 6.x 版本。
 
 ## 配置选项
 

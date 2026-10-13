@@ -1,7 +1,6 @@
 // ReadFilePopupMobile.ts
 import Popup from "@aggbond/my-popup";
 import { SecurityUtils, DEFAULT_SECURITY_CONFIG } from './security-config';
-import * as pdfjsLib from 'pdfjs-dist';
 import { pdfWorkerBase64 } from './pdf.worker.inline';
 
 interface FileObject {
@@ -270,19 +269,19 @@ class FilePreview {
 
   private async _loadPdfJs(): Promise<any> {
     if (this.pdfjsLib) return this.pdfjsLib;
-    
+
     let lib: any;
-    if (this.Configns.pdfJsPath) {
-      try {
-        lib = await import(/* @vite-ignore */ this.Configns.pdfJsPath);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        throw new Error(`无法加载 PDF.js 从 ${this.Configns.pdfJsPath}: ${message}`);
-      }
-    } else {
-      lib = pdfjsLib;
+    const pdfJsSource = this.Configns.pdfJsPath || 'pdfjs-dist';
+
+    try {
+      lib = this.Configns.pdfJsPath
+        ? await import(/* @vite-ignore */ this.Configns.pdfJsPath)
+        : await import('pdfjs-dist');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`无法加载 PDF.js 从 ${pdfJsSource}: ${message}`);
     }
-    
+
     if (lib.GlobalWorkerOptions) {
       if (this.Configns.pdfWorkerPath) {
         lib.GlobalWorkerOptions.workerSrc = this.Configns.pdfWorkerPath;
@@ -296,6 +295,7 @@ class FilePreview {
         lib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(blob);
       }
     }
+
     this.pdfjsLib = lib;
     return this.pdfjsLib;
   }

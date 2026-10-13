@@ -145,6 +145,20 @@
     <div id="fileList"></div>
   </div>
 
+  <h2>8. 外置 PDF.js（按机型/版本切换）</h2>
+  <div class="panel">
+    <p>可在运行时动态指定 PDF.js 主模块和 worker；适合兼容旧 iOS。</p>
+    <button id="externalPdfLegacy">加载 legacy PDF.js</button>
+    <button id="externalPdfModern">加载 modern PDF.js</button>
+    <div class="note warning">
+      下载地址示例：<br>
+      legacy main: https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.mjs<br>
+      legacy worker: https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.worker.min.mjs<br>
+      modern main: https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/legacy/build/pdf.mjs<br>
+      modern worker: https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/legacy/build/pdf.worker.min.mjs
+    </div>
+  </div>
+
   <script type="module">
     import FilePreview from "/dist/ReadFilePopupMobile.es.js";
 
@@ -368,6 +382,40 @@
           console.log("复选框状态：", isChecked);
         }
       }
+    });
+
+    // ========== 8. 外置 PDF.js ==========
+    const legacyPdfJsUrl = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.mjs";
+    const legacyWorkerUrl = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.worker.min.mjs";
+    const modernPdfJsUrl = "https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/legacy/build/pdf.mjs";
+    const modernWorkerUrl = "https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/legacy/build/pdf.worker.min.mjs";
+
+    document.querySelector("#externalPdfLegacy").addEventListener("click", () => {
+      const preview = new FilePreview({
+        useCanvasRender: true,
+        pdfJsPath: legacyPdfJsUrl,
+        pdfWorkerPath: legacyWorkerUrl,
+      });
+      preview.loadFile({
+        name: "外置 legacy PDF.js 测试",
+        file_type: 2,
+        pdf_url: pdfUrl,
+      });
+      status.textContent = "已切换为外置 legacy PDF.js";
+    });
+
+    document.querySelector("#externalPdfModern").addEventListener("click", () => {
+      const preview = new FilePreview({
+        useCanvasRender: true,
+        pdfJsPath: modernPdfJsUrl,
+        pdfWorkerPath: modernWorkerUrl,
+      });
+      preview.loadFile({
+        name: "外置 modern PDF.js 测试",
+        file_type: 2,
+        pdf_url: pdfUrl,
+      });
+      status.textContent = "已切换为外置 modern PDF.js";
     });
   </script>
 </body>
