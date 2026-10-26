@@ -1,12 +1,12 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'jsdom',
-  testMatch: ['**/test/**/*.test.(ts|tsx|js)'],
+  testRegex: '/test/.*\\.(test|spec)\\.(c?js|ts|tsx)$',
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
     '!src/**/*.d.ts',
   ],
-  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node', 'cjs'],
   transform: {
     '^.+\\.tsx?$': [
       'ts-jest',
@@ -16,9 +16,9 @@ module.exports = {
     ],
   },
   testTimeout: 30000,
-  setupFiles: ['<rootDir>/test/setup.js'],
+  setupFiles: ['<rootDir>/test/setup.cjs'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
-    '^pdfjs-dist$': '<rootDir>/test/__mocks__/pdfjs-dist.js'
+    '^pdfjs-dist$': '<rootDir>/test/__mocks__/pdfjs-dist.cjs'
   }
 };

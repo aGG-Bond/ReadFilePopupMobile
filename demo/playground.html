@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ReadFilePopupMobile 交互式 Playground</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      color: #333;
+      background: #f5f7fa;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px 30px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .header h1 {
+      font-size: 24px;
+      margin-bottom: 5px;
+    }
+
+    .header p {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .container {
+      display: flex;
+      height: calc(100vh - 80px);
+    }
+
+    .sidebar {
+      width: 240px;
+      background: white;
+      border-right: 1px solid #e1e4e8;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+
+    .sidebar h3 {
+      padding: 15px 20px 10px;
+      font-size: 12px;
+      text-transform: uppercase;
+      color: #666;
+      letter-spacing: 0.5px;
+    }
+
+    .example-item {
+      padding: 12px 20px;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: all 0.2s;
+      font-size: 14px;
+    }
+
+    .example-item:hover {
+      background: #f6f8fa;
+      border-left-color: #667eea;
+    }
+
+    .example-item.active {
+      background: #f0f4ff;
+      border-left-color: #667eea;
+      color: #667eea;
+      font-weight: 500;
+    }
+
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      padding: 10px 20px;
+      background: white;
+      border-bottom: 1px solid #e1e4e8;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #5a6fd6;
+    }
+
+    .btn-secondary {
+      background: #f6f8fa;
+      color: #333;
+      border: 1px solid #e1e4e8;
+    }
+
+    .btn-secondary:hover {
+      background: #e9ecef;
+    }
+
+    .editor-container {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .editor-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid #e1e4e8;
+    }
+
+    .panel-header {
+      padding: 10px 15px;
+      background: #f6f8fa;
+      border-bottom: 1px solid #e1e4e8;
+      font-size: 13px;
+      font-weight: 500;
+      color: #586069;
+    }
+
+    .editor {
+      flex: 1;
+      width: 100%;
+      padding: 15px;
+      border: none;
+      resize: none;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      background: #fafbfc;
+      color: #24292e;
+      outline: none;
+    }
+
+    .preview-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: white;
+    }
+
+    .preview-frame {
+      flex: 1;
+      border: none;
+      background: white;
+    }
+
+    .status-bar {
+      padding: 8px 15px;
+      background: #f6f8fa;
+      border-top: 1px solid #e1e4e8;
+      font-size: 12px;
+      color: #666;
+    }
+
+    .status-bar.success {
+      color: #28a745;
+    }
+
+    .status-bar.error {
+      color: #dc3545;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        flex-direction: column;
+        height: auto;
+      }
+
+      .sidebar {
+        width: 100%;
+        max-height: 200px;
+        border-right: none;
+        border-bottom: 1px solid #e1e4e8;
+      }
+
+      .editor-container {
+        flex-direction: column;
+      }
+
+      .editor-panel {
+        border-right: none;
+        border-bottom: 1px solid #e1e4e8;
+        min-height: 300px;
+      }
+
+      .preview-panel {
+        min-height: 400px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">
+    <h1>📱 ReadFilePopupMobile Playground</h1>
+    <p>实时编辑代码，预览强制阅读弹窗效果</p>
+  </div>
+
+  <div class="container">
+    <div class="sidebar">
+      <h3>示例列表</h3>
+      <div id="exampleList"></div>
+    </div>
+
+    <div class="main">
+      <div class="toolbar">
+        <button class="btn btn-primary" id="runBtn">▶ 运行</button>
+        <button class="btn btn-secondary" id="resetBtn">↺ 重置</button>
+        <button class="btn btn-secondary" id="copyBtn">📋 复制代码</button>
+        <span style="flex:1"></span>
+        <span style="font-size:13px;color:#666">Ctrl+Enter 运行</span>
+      </div>
+
+      <div class="editor-container">
+        <div class="editor-panel">
+          <div class="panel-header">代码编辑器</div>
+          <textarea class="editor" id="codeEditor" spellcheck="false"></textarea>
+        </div>
+
+        <div class="preview-panel">
+          <div class="panel-header">预览效果</div>
+          <iframe class="preview-frame" id="previewFrame"></iframe>
+        </div>
+      </div>
+
+      <div class="status-bar" id="statusBar">就绪</div>
+    </div>
+  </div>
+
+  <script type="module">
+    import FilePreview from '/dist/ReadFilePopupMobile.es.js';
+    window.FilePreview = FilePreview;
+  </script>
+  <script>
+    const examples = [
+      {
+        name: '基础强制阅读',
+        code: `const preview = new FilePreview({
+  coerceReadList: {
+    titleText: "请阅读以下文件",
+    fileList: [
+      { 
+        name: "用户协议", 
+        file_type: 1, 
+        content_text: "<h2>用户协议</h2><p>欢迎使用我们的服务...</p><p>请仔细阅读以下条款。</p>" 
+      },
+      { 
+        name: "隐私政策", 
+        file_type: 1, 
+        content_text: "<h2>隐私政策</h2><p>我们重视您的隐私保护...</p>" 
+      }
+    ],
+    btnArr: ["同意并继续", "拒绝"],
+    coerceCallBack: (control, buttonIndex) => {
+      if (buttonIndex === 0) {
+        if (control.isLastFile()) {
+          alert("已完成所有文件阅读！");
+          control.close();
+        } else {
+          control.next();
+        }
+      } else {
+        control.close();
+      }
+    }
+  }
+});
+preview.openCoerceReadPopup();`
+      },
+      {
+        name: 'PDF 文件预览',
+        code: `const preview = new FilePreview({
+  useCanvasRender: true
+});
+preview.loadFile({
+  name: "PDF 文档",
+  file_type: 2,
+  pdf_url: "https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf"
+}).catch(error => {
+  alert("加载失败: " + error.message);
+});`
+      },
+      {
+        name: '富文本预览',
+        code: `const preview = new FilePreview({});
+preview.loadFile({
+  name: "用户协议",
+  file_type: 1,
+  content_text: "<h2>用户协议</h2><p>欢迎使用我们的服务...</p><p><strong>重要条款：</strong>请仔细阅读以下内容。</p><ul><li>条款一</li><li>条款二</li><li>条款三</li></ul>"
+});`
+      },
+      {
+        name: '引用文本（多文件）',
+        code: `const preview = new FilePreview({});
+preview.loadFile({
+  name: "服务条款",
+  file_type: 3,
+  com_terms: [
+    { 
+      name: "条款一：用户协议", 
+      file_type: 1, 
+      content_text: "<h2>条款一</h2><p>用户协议内容...</p>" 
+    },
+    { 
+      name: "条款二：隐私政策", 
+      file_type: 1, 
+      content_text: "<h2>条款二</h2><p>隐私政策内容...</p>" 
+    }
+  ]
+});`
+      },
+      {
+        name: 'Tab 切换模式',
+        code: `const preview = new FilePreview({
+  coerceReadList: {
+    titleText: "请阅读以下文件",
+    fileList: [
+      { name: "用户协议", file_type: 1, content_text: "<h2>用户协议</h2><p>协议内容...</p>" },
+      { name: "隐私政策", file_type: 1, content_text: "<h2>隐私政策</h2><p>政策内容...</p>" },
+      { name: "服务条款", file_type: 1, content_text: "<h2>服务条款</h2><p>条款内容...</p>" }
+    ],
+    btnArr: ["同意", "拒绝"],
+    enableTabMode: true,
+    coerceCallBack: (control, buttonIndex) => {
+      if (buttonIndex === 0) {
+        if (control.isLastFile()) {
+          alert("已同意！");
+          control.close();
+        } else {
+          control.next();
+        }
+      } else {
+        control.close();
+      }
+    }
+  }
+});
+preview.openCoerceReadPopup();`
+      },
+      {
+        name: 'Tab + 按钮联动',
+        code: `const preview = new FilePreview({
+  coerceReadList: {
+    titleText: "请阅读以下文件",
+    fileList: [
+      { name: "用户协议", file_type: 1, content_text: "<h2>用户协议</h2><p>协议内容...</p>" },
+      { name: "隐私政策", file_type: 1, content_text: "<h2>隐私政策</h2><p>政策内容...</p>" },
+      { name: "服务条款", file_type: 1, content_text: "<h2>服务条款</h2><p>条款内容...</p>" }
+    ],
+    btnArr: ["同意并继续", "拒绝"],
+    enableTabMode: true,
+    tabButtonLinkMode: 'linked',
+    showProgressInButton: true,
+    coerceCallBack: (control, buttonIndex) => {
+      if (buttonIndex === 0) {
+        if (control.isLastFile()) {
+          alert("已完成所有文件阅读！");
+          control.close();
+        } else {
+          control.next();
+        }
+      } else {
+        control.close();
+      }
+    }
+  }
+});
+preview.openCoerceReadPopup();`
+      },
+      {
+        name: '独立文本区',
+        code: `const preview = new FilePreview({
+  coerceReadList: {
+    titleText: "请阅读以下文件",
+    fileList: [
+      { name: "用户协议", file_type: 1, content_text: "<h2>用户协议</h2><p>协议内容...</p>" },
+      { name: "隐私政策", file_type: 1, content_text: "<h2>隐私政策</h2><p>政策内容...</p>" }
+    ],
+    btnArr: ["同意", "拒绝"],
+    enableTabMode: true,
+    editableArea: {
+      enabled: true,
+      mode: 'per-tab',
+      texts: [
+        '请仔细阅读用户协议，如有疑问请联系客服。',
+        '我们重视您的隐私保护，详情请查看完整政策。'
+      ],
+      textStyle: {
+        color: '#FF6B00',
+        fontWeight: 'bold'
+      }
+    },
+    onTabChange: ({ fromIndex, toIndex }) => {
+      console.log(\`从 Tab \${fromIndex} 切换到 Tab \${toIndex}\`);
+    },
+    coerceCallBack: (control, buttonIndex) => {
+      if (buttonIndex === 0) {
+        alert('已同意！');
+        control.close();
+      } else {
+        control.close();
+      }
+    }
+  }
+});
+preview.openCoerceReadPopup();`
+      },
+      {
+        name: '共享文本区',
+        code: `const preview = new FilePreview({
+  coerceReadList: {
+    titleText: "请阅读以下文件",
+    fileList: [
+      { name: "用户协议", file_type: 1, content_text: "<h2>用户协议</h2><p>协议内容...</p>" },
+      { name: "隐私政策", file_type: 1, content_text: "<h2>隐私政策</h2><p>政策内容...</p>" }
+    ],
+    btnArr: ["同意", "拒绝"],
+    enableTabMode: true,
+    editableArea: {
+      enabled: true,
+      mode: 'shared',
+      text: '请仔细阅读以上所有文件内容，如有疑问请联系客服。',
+      containerStyle: {
+        background: '#f0f9ff',
+        borderTop: '2px solid #1890ff'
+      }
+    },
+    coerceCallBack: (control, buttonIndex) => {
+      if (buttonIndex === 0) {
+        alert('已同意！');
+        control.close();
+      } else {
+        control.close();
+      }
+    }
+  }
+});
+preview.openCoerceReadPopup();`
+      },
+      {
+        name: '带提示信息',
+        code: `const preview = new FilePreview({
+  coerceReadList: {
+    titleText: "服务条款",
+    tipsText: "请仔细阅读以下文件内容，阅读完毕后点击按钮继续。",
+    fileList: [
+      { name: "用户协议", file_type: 1, content_text: "<h2>用户协议</h2><p>协议内容...</p>" }
+    ],
+    btnArr: ["我已阅读并同意", "不同意"],
+    coerceCallBack: (control, buttonIndex) => {
+      control.close();
+    }
+  }
+});
+preview.openCoerceReadPopup();`
+      },
+      {
+        name: '延迟配置',
+        code: `const preview = new FilePreview({
+  coerceReadList: {
+    titleText: "请阅读以下文件",
+    tipsText: "倒计时结束后才能点击同意",
+    fileList: [
+      { name: "用户协议", file_type: 1, content_text: "<h2>用户协议</h2><p>协议内容...</p>" }
+    ],
+    btnArr: ["同意", "拒绝"],
+    delayConfig: {
+      seconds: 5,
+      buttonIndex: 0,
+      text: "请阅读 {seconds} 秒"
+    },
+    coerceCallBack: (control, buttonIndex) => {
+      if (buttonIndex === 0) {
+        alert("已同意！");
+        control.close();
+      } else {
+        control.close();
+      }
+    }
+  }
+});
+preview.openCoerceReadPopup();`
+      },
+      {
+        name: '自定义 Tab 样式',
+        code: `const preview = new FilePreview({
+  coerceReadList: {
+    titleText: "请阅读以下文件",
+    fileList: [
+      { name: "用户协议", file_type: 1, content_text: "<h2>用户协议</h2><p>协议内容...</p>" },
+      { name: "隐私政策", file_type: 1, content_text: "<h2>隐私政策</h2><p>政策内容...</p>" },
+      { name: "服务条款", file_type: 1, content_text: "<h2>服务条款</h2><p>条款内容...</p>" }
+    ],
+    btnArr: ["同意", "拒绝"],
+    enableTabMode: true,
+    tabStyle: {
+      indicatorColor: '#FF6B00',
+      tabMaxWidth: '120px',
+      tabMinWidth: '80px',
+      tabTextActiveStyle: { color: '#FF6B00' },
+      tabTextStyle: { color: '#999' }
+    },
+    coerceCallBack: (control, buttonIndex) => {
+      if (buttonIndex === 0) {
+        if (control.isLastFile()) {
+          alert("已同意！");
+          control.close();
+        } else {
+          control.next();
+        }
+      } else {
+        control.close();
+      }
+    }
+  }
+});
+preview.openCoerceReadPopup();`
+      },
+      {
+        name: '文件列表',
+        code: `const preview = new FilePreview({
+  isDrawFileList: true,
+  isBindFileClick: true,
+  listObj: {
+    listId: "#fileList",
+    fileStyle: {
+      'color': '#007AFF',
+      'cursor': 'pointer'
+    },
+    listText: '请阅读以下文件',
+    fileList: [
+      { name: "用户协议", file_type: 1, content_text: "<h2>用户协议</h2><p>协议内容...</p>" },
+      { name: "隐私政策", file_type: 1, content_text: "<h2>隐私政策</h2><p>政策内容...</p>" }
+    ],
+    isCheckButton: true,
+    checkCallBack: (isChecked) => {
+      console.log("复选框状态：", isChecked);
+    }
+  }
+});`
+      },
+      {
+        name: '外置 PDF.js（legacy v4）',
+        code: `const preview = new FilePreview({
+  useCanvasRender: true,
+  pdfJsPath: "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.mjs",
+  pdfWorkerPath: "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.worker.min.mjs"
+});
+preview.loadFile({
+  name: "PDF 文档（legacy v4）",
+  file_type: 2,
+  pdf_url: "https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf"
+}).catch(error => {
+  alert("加载失败: " + error.message);
+});`
+      },
+      {
+        name: '外置 PDF.js（v2）',
+        code: `// 2.x 版本使用 .js 后缀，无 legacy 目录
+const preview = new FilePreview({
+  useCanvasRender: true,
+  pdfJsPath: "https://cdn.jsdelivr.net/npm/pdfjs-dist@2.16.105/build/pdf.js",
+  pdfWorkerPath: "https://cdn.jsdelivr.net/npm/pdfjs-dist@2.16.105/build/pdf.worker.min.js"
+});
+preview.loadFile({
+  name: "PDF 文档（v2）",
+  file_type: 2,
+  pdf_url: "https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf"
+}).catch(error => {
+  alert("加载失败: " + error.message);
+});`
+      },
+      {
+        name: '外置 PDF.js（v3 legacy）',
+        code: `// 3.x legacy 版本兼容 iOS 10.3+
+const preview = new FilePreview({
+  useCanvasRender: true,
+  pdfJsPath: "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.js",
+  pdfWorkerPath: "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.worker.min.js"
+});
+preview.loadFile({
+  name: "PDF 文档（v3 legacy）",
+  file_type: 2,
+  pdf_url: "https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf"
+}).catch(error => {
+  alert("加载失败: " + error.message);
+});`
+      },
+      {
+        name: '外置 PDF.js（仅指定主模块）',
+        code: `// 只指定 pdfJsPath，worker 会自动从 URL 推导版本和文件后缀
+const preview = new FilePreview({
+  useCanvasRender: true,
+  pdfJsPath: "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.mjs"
+});
+preview.loadFile({
+  name: "PDF 文档（自动推导 worker）",
+  file_type: 2,
+  pdf_url: "https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf"
+}).catch(error => {
+  alert("加载失败: " + error.message);
+});`
+      }
+    ];
+
+    const editor = document.getElementById('codeEditor');
+    const previewFrame = document.getElementById('previewFrame');
+    const statusBar = document.getElementById('statusBar');
+    const exampleList = document.getElementById('exampleList');
+
+    let currentExampleIndex = 0;
+
+    function renderExampleList() {
+      exampleList.innerHTML = examples.map((ex, index) => 
+        `<div class="example-item ${index === 0 ? 'active' : ''}" data-index="${index}">${ex.name}</div>`
+      ).join('');
+
+      exampleList.querySelectorAll('.example-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const index = parseInt(item.dataset.index);
+          loadExample(index);
+        });
+      });
+    }
+
+    function loadExample(index) {
+      currentExampleIndex = index;
+      editor.value = examples[index].code;
+      
+      exampleList.querySelectorAll('.example-item').forEach((item, i) => {
+        item.classList.toggle('active', i === index);
+      });
+      
+      runCode();
+    }
+
+    function runCode() {
+      var code = editor.value;
+      var isFileListExample = code.indexOf('isDrawFileList: true') !== -1;
+
+      var bodyContent = '';
+      var scriptContent = '';
+
+      if (isFileListExample) {
+        bodyContent = '<div id="fileList"></div>';
+        scriptContent = 'try {\n' + code + '\n} catch(e) {\n  console.error(e);\n  alert("代码执行错误: " + e.message);\n}';
+      } else {
+        bodyContent = '<button class="trigger-btn" id="triggerBtn">点击打开弹窗</button><p class="tip">点击按钮查看效果</p>';
+        scriptContent = "document.getElementById('triggerBtn').addEventListener('click', function() {\n  try {\n    " + code + "\n  } catch(e) {\n    console.error(e);\n    alert('代码执行错误: ' + e.message);\n  }\n});\nsetTimeout(function() {\n  document.getElementById('triggerBtn').click();\n}, 300);";
+      }
+
+      var previewHtml = [
+        '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">',
+        '<style>',
+        'body { font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; background: #f5f7fa; }',
+        '.trigger-btn { padding: 15px 30px; font-size: 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); transition: all 0.3s; }',
+        '.trigger-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5); }',
+        '.tip { margin-top: 20px; color: #666; font-size: 14px; }',
+        '#fileList { width: 100%; max-width: 400px; margin: 20px auto; padding: 15px; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }',
+        '</style></head><body>',
+        bodyContent,
+        '<script type="module">import FilePreview from "/dist/ReadFilePopupMobile.es.js";' + scriptContent + '</scr' + 'ipt>',
+        '</body></html>'
+      ].join('');
+
+      previewFrame.srcdoc = previewHtml;
+      setStatus('运行成功', 'success');
+    }
+
+    function setStatus(text, type) {
+      statusBar.textContent = text;
+      statusBar.className = 'status-bar ' + (type || '');
+    }
+
+    document.getElementById('runBtn').addEventListener('click', runCode);
+
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      loadExample(currentExampleIndex);
+    });
+
+    document.getElementById('copyBtn').addEventListener('click', () => {
+      navigator.clipboard.writeText(editor.value).then(() => {
+        setStatus('代码已复制到剪贴板', 'success');
+        setTimeout(() => setStatus('就绪'), 2000);
+      });
+    });
+
+    editor.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.key === 'Enter') {
+        e.preventDefault();
+        runCode();
+      }
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = editor.selectionStart;
+        const end = editor.selectionEnd;
+        editor.value = editor.value.substring(0, start) + '  ' + editor.value.substring(end);
+        editor.selectionStart = editor.selectionEnd = start + 2;
+      }
+    });
+
+    renderExampleList();
+    loadExample(0);
+  </script>
+</body>
+
+</html>

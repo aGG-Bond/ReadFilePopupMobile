@@ -13,9 +13,11 @@
       font-family: system-ui, sans-serif;
       color: #202124;
     }
-
     h1 {
       margin-top: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     h2 {
@@ -116,6 +118,22 @@
     <button id="delay10">10秒延迟</button>
   </div>
 
+  <!-- 4.5 Tab 切换模式 -->
+  <h2>4.5 Tab 切换模式</h2>
+  <div class="panel">
+    <p>顶部 Tab 栏切换文件：</p>
+    <button id="tabModeBasic">基础 Tab 模式（联动）</button>
+    <button id="tabModeLinked">Tab 独立切换（不联动）</button>
+    <button id="tabModeEditable">独立文本区</button>
+    <button id="tabModeSharedEditable">共享文本区</button>
+    <div class="note">
+      <strong>基础 Tab 模式（联动）：</strong>默认联动，按钮和 Tab 都能切换文件<br>
+      <strong>Tab 独立切换（不联动）：</strong>只有 Tab 能切换文件，按钮无效<br>
+      <strong>独立文本区：</strong>每个 Tab 显示不同的提示文本<br>
+      <strong>共享文本区：</strong>所有 Tab 显示相同的提示文本
+    </div>
+  </div>
+
   <!-- 5. 提示信息 -->
   <h2>5. 提示信息 (tipsText)</h2>
   <div class="panel">
@@ -147,15 +165,29 @@
 
   <h2>8. 外置 PDF.js（按机型/版本切换）</h2>
   <div class="panel">
-    <p>可在运行时动态指定 PDF.js 主模块和 worker；适合兼容旧 iOS。</p>
-    <button id="externalPdfLegacy">加载 legacy PDF.js</button>
-    <button id="externalPdfModern">加载 modern PDF.js</button>
+    <p>PDF.js 通过 CDN 动态加载，可指定任意版本。打开控制台可查看加载的版本号。</p>
+    <p style="color:#666;font-size:13px;margin:8px 0">选择版本后，当前页面将锁定该版本，无法切换：</p>
+    <button id="externalPdfV2">加载 PDF.js v2</button>
+    <button id="externalPdfV3">加载 PDF.js v3 (legacy)</button>
+    <button id="externalPdfLegacy">加载 PDF.js v4 (legacy)</button>
+    <button id="externalPdfModern">加载 PDF.js v6 (modern)</button>
+    <button id="externalPdfDefault">使用默认版本 (v6)</button>
+    <div id="pdfVersionStatus" style="margin-top:10px;padding:8px;background:#e8f5e9;border-radius:4px;display:none"></div>
     <div class="note warning">
-      下载地址示例：<br>
-      legacy main: https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.mjs<br>
-      legacy worker: https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.worker.min.mjs<br>
-      modern main: https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/legacy/build/pdf.mjs<br>
-      modern worker: https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/legacy/build/pdf.worker.min.mjs
+      <strong>版本兼容性：</strong><br>
+      <table style="border-collapse:collapse;margin:8px 0;font-size:12px;width:100%">
+        <tr style="background:#f5f5f5"><th style="border:1px solid #ddd;padding:4px 8px;text-align:left">PDF.js 版本</th><th style="border:1px solid #ddd;padding:4px 8px;text-align:left">最低 Safari</th><th style="border:1px solid #ddd;padding:4px 8px;text-align:left">最低 iOS</th><th style="border:1px solid #ddd;padding:4px 8px;text-align:left">路径</th></tr>
+        <tr><td style="border:1px solid #ddd;padding:4px 8px">v2.x (2.16.105)</td><td style="border:1px solid #ddd;padding:4px 8px">Safari 14+</td><td style="border:1px solid #ddd;padding:4px 8px">iOS 14+</td><td style="border:1px solid #ddd;padding:4px 8px"><code>build/pdf.js</code></td></tr>
+        <tr style="background:#e8f5e9"><td style="border:1px solid #ddd;padding:4px 8px">v3.x (3.11.174) legacy</td><td style="border:1px solid #ddd;padding:4px 8px">Safari 10+</td><td style="border:1px solid #ddd;padding:4px 8px">iOS 10.3+</td><td style="border:1px solid #ddd;padding:4px 8px"><code>legacy/build/pdf.js</code></td></tr>
+        <tr><td style="border:1px solid #ddd;padding:4px 8px">v4.x (4.10.38) legacy</td><td style="border:1px solid #ddd;padding:4px 8px">Safari 16.4+</td><td style="border:1px solid #ddd;padding:4px 8px">iOS 16.4+</td><td style="border:1px solid #ddd;padding:4px 8px"><code>legacy/build/pdf.mjs</code></td></tr>
+        <tr><td style="border:1px solid #ddd;padding:4px 8px">v6.x (6.2.108)</td><td style="border:1px solid #ddd;padding:4px 8px">Safari 17+</td><td style="border:1px solid #ddd;padding:4px 8px">iOS 17+</td><td style="border:1px solid #ddd;padding:4px 8px"><code>legacy/build/pdf.mjs</code></td></tr>
+      </table>
+      <strong>注意：</strong>
+      <ul style="margin:8px 0;padding-left:20px">
+        <li>2.x 无 legacy 目录；3.x 必须用 <code>legacy/</code> 路径才能兼容 iOS 10-13</li>
+        <li>插件自身代码已编译为 ES2015，兼容 iOS 10.3+</li>
+        <li><strong>同一页面只能使用一个 PDF.js 版本</strong>，切换版本需要刷新页面</li>
+      </ul>
     </div>
   </div>
 
@@ -185,7 +217,8 @@
     // ========== 2. 文件预览 ==========
     document.querySelector("#previewPdf").addEventListener("click", () => {
       const preview = new FilePreview({});
-      preview.loadFile(pdfUrl, "PDF 文档");
+      preview.loadFile('https://m.baigebaodev.com//upload/baoxian/clause/20260601/6a1d748d2c93e_1591.pdf', "PDF 文档");
+
     });
 
     document.querySelector("#previewRichText").addEventListener("click", () => {
@@ -328,6 +361,159 @@
       preview.openCoerceReadPopup();
     });
 
+    // ========== 4.5 Tab 切换模式 ==========
+    document.querySelector("#tabModeBasic").addEventListener("click", () => {
+      const preview = new FilePreview({
+        coerceReadList: {
+          titleText: "请阅读以下文件",
+          fileList: [
+            { name: "用户协议", file_type: 1, content_text: "<h2>用户协议</h2><p>欢迎使用我们的服务...</p>" },
+            { name: "隐私政策", file_type: 1, content_text: "<h2>隐私政策</h2><p>我们重视您的隐私...</p>" },
+            { name: "隐私政策1", file_type: 2, pdf_url: pdfUrl }
+          ],
+          btnArr: ["同意并继续", "拒绝"],
+          enableTabMode: true,
+          showProgressInButton: true,
+          delayConfig: {
+            seconds: 10,
+            buttonIndex: 0,
+            text: "等待 {seconds} 秒"
+          },
+          coerceCallBack: (control, buttonIndex) => {
+            if (buttonIndex === 0) {
+              if (control.isLastFile()) {
+                alert("已完成所有文件阅读！");
+                control.close();
+              } else {
+                control.next();
+                return false;
+              }
+            } else {
+              control.close();
+            }
+          }
+        }
+      });
+      preview.openCoerceReadPopup();
+    });
+
+    document.querySelector("#tabModeLinked").addEventListener("click", () => {
+      const preview = new FilePreview({
+        coerceReadList: {
+          // titleText: " ",
+          tipsText: 'aaaaaaaa',
+          fileList: [
+            { name: "用户协议", file_type: 1, content_text: "<h2>用户协议</h2><p>协议内容...</p>" },
+            { name: "隐私政策", file_type: 1, content_text: "<h2>隐私政策</h2><p>政策内容...</p>" },
+            { name: "隐私政策1", file_type: 2, pdf_url: pdfUrl },
+            { name: "用户协议", file_type: 1, content_text: "<h2>用户协议</h2><p>协议内容...</p>" },
+            { name: "隐私政策", file_type: 1, content_text: "<h2>隐私政策</h2><p>政策内容...</p>" },
+            { name: "隐私政策1", file_type: 2, pdf_url: 'https://m.baigebaodev.com//upload/baoxian/clause/20260601/6a1d748d2c93e_1591.pdf' }
+          ],
+          btnArr: ["同意", "拒绝"],
+          enableTabMode: true,
+          tabStyle: {
+            indicatorColor: '#007AFF',              // 底部指示条颜色
+            tabMaxWidth: '120px',                   // Tab 最大宽度
+            tabMinWidth: '80px',                    // Tab 最小宽度
+            tabBarStyle: { background: '#fff' },    // Tab 栏容器样式
+            tabItemStyle: { padding: '10px' },      // Tab 项样式
+            tabItemActiveStyle: { fontWeight: 'bold' },  // 选中 Tab 项样式
+            tabTextStyle: { color: '#999' },        // Tab 文字样式
+            tabTextActiveStyle: { color: '#007AFF' } // 选中 Tab 文字样式
+          },
+          tabButtonLinkMode: 'noLinked',
+          editableArea: {
+            enabled: true,
+            mode: 'shared',
+            text: '请仔细阅读以上所有文件内容，如有疑问请联系客服。',
+            containerStyle: {
+              background: '#f0f9ff',
+            }
+          },
+          coerceCallBack: (control, buttonIndex) => {
+            if (buttonIndex === 0) {
+              alert("已同意所有文件！");
+              control.close();
+            } else {
+              control.close();
+            }
+          }
+        }
+      });
+      preview.openCoerceReadPopup();
+    });
+
+    document.querySelector("#tabModeEditable").addEventListener("click", () => {
+      const preview = new FilePreview({
+        coerceReadList: {
+          titleText: "请阅读以下文件",
+          fileList: [
+            { name: "用户协议", file_type: 1, content_text: "<h2>用户协议</h2><p>协议内容...</p>" },
+            { name: "隐私政策", file_type: 1, content_text: "<h2>隐私政策</h2><p>政策内容...</p>" }
+          ],
+          btnArr: ["同意", "拒绝"],
+          enableTabMode: true,
+          editableArea: {
+            enabled: true,
+            mode: 'per-tab',
+            texts: [
+              '请仔细阅读用户协议，如有疑问请联系客服。',
+              '我们重视您的隐私保护，详情请查看完整政策。'
+            ],
+            textStyle: {
+              color: '#FF6B00',
+              fontWeight: 'bold'
+            }
+          },
+          onTabChange: ({ fromIndex, toIndex }) => {
+            console.log(`从 Tab ${fromIndex} 切换到 Tab ${toIndex}`);
+          },
+          coerceCallBack: (control, buttonIndex) => {
+            if (buttonIndex === 0) {
+              alert('已同意！');
+              control.close();
+            } else {
+              control.close();
+            }
+          }
+        }
+      });
+      preview.openCoerceReadPopup();
+    });
+
+    document.querySelector("#tabModeSharedEditable").addEventListener("click", () => {
+      const preview = new FilePreview({
+        coerceReadList: {
+          titleText: "请阅读以下文件",
+          fileList: [
+            { name: "用户协议", file_type: 1, content_text: "<h2>用户协议</h2><p>协议内容...</p>" },
+            { name: "隐私政策", file_type: 1, content_text: "<h2>隐私政策</h2><p>政策内容...</p>" }
+          ],
+          btnArr: ["同意", "拒绝"],
+          enableTabMode: true,
+          editableArea: {
+            enabled: true,
+            mode: 'shared',
+            text: '请仔细阅读以上所有文件内容，如有疑问请联系客服。',
+            containerStyle: {
+              background: '#f0f9ff',
+              borderTop: '2px solid #1890ff'
+            }
+          },
+          coerceCallBack: (control, buttonIndex) => {
+            if (buttonIndex === 0) {
+              alert('已同意！');
+              control.close();
+            } else {
+              control.close();
+            }
+          }
+        }
+      });
+      preview.openCoerceReadPopup();
+    });
+
     // ========== 5. 提示信息 ==========
     document.querySelector("#tipsDemo").addEventListener("click", () => {
       const preview = new FilePreview({
@@ -371,8 +557,14 @@
     // ========== 7. 文件列表 ==========
     const listPreview = new FilePreview({
       isDrawFileList: true,
+      isBindFileClick: true,
       listObj: {
         listId: "#fileList",
+        fileStyle: {
+        'color': '#007AFF',
+        'cursor': 'pointer'
+      },
+      listText: '本保险保障范围仅限<span style="color: #FF0000">乘坐本班次客运汽车</span>',
         fileList: [
           { name: "用户协议", file_type: 1, content_text: "<h2>用户协议</h2><p>协议内容...</p>" },
           { name: "隐私政策", file_type: 2, pdf_url: pdfUrl }
@@ -385,37 +577,59 @@
     });
 
     // ========== 8. 外置 PDF.js ==========
+    const v2PdfJsUrl = "https://cdn.jsdelivr.net/npm/pdfjs-dist@2.16.105/build/pdf.js";
+    const v2WorkerUrl = "https://cdn.jsdelivr.net/npm/pdfjs-dist@2.16.105/build/pdf.worker.min.js";
+    const v3PdfJsUrl = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.js";
+    const v3WorkerUrl = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.worker.min.js";
     const legacyPdfJsUrl = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.mjs";
     const legacyWorkerUrl = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.worker.min.mjs";
     const modernPdfJsUrl = "https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/legacy/build/pdf.mjs";
     const modernWorkerUrl = "https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/legacy/build/pdf.worker.min.mjs";
 
-    document.querySelector("#externalPdfLegacy").addEventListener("click", () => {
+    let loadedPdfVersion = null;
+    const versionStatus = document.querySelector("#pdfVersionStatus");
+
+    function loadPdfVersion(version, pdfJsPath, pdfWorkerPath) {
+      if (loadedPdfVersion && loadedPdfVersion !== version) {
+        alert(`已加载 PDF.js ${loadedPdfVersion}，无法切换到 ${version}。\n请刷新页面后重新选择版本。`);
+        return;
+      }
+
       const preview = new FilePreview({
         useCanvasRender: true,
-        pdfJsPath: legacyPdfJsUrl,
-        pdfWorkerPath: legacyWorkerUrl,
+        pdfJsPath: pdfJsPath,
+        pdfWorkerPath: pdfWorkerPath,
       });
       preview.loadFile({
-        name: "外置 legacy PDF.js 测试",
+        name: `PDF.js ${version} 测试`,
         file_type: 2,
         pdf_url: pdfUrl,
       });
-      status.textContent = "已切换为外置 legacy PDF.js";
+
+      loadedPdfVersion = version;
+      versionStatus.style.display = "block";
+      versionStatus.innerHTML = `<strong>当前已锁定：</strong>PDF.js ${version}<br><small>如需切换版本，请刷新页面</small>`;
+      status.textContent = `已加载 PDF.js ${version}，请查看控制台输出版本号`;
+    }
+
+    document.querySelector("#externalPdfV2").addEventListener("click", () => {
+      loadPdfVersion("v2", v2PdfJsUrl, v2WorkerUrl);
+    });
+
+    document.querySelector("#externalPdfV3").addEventListener("click", () => {
+      loadPdfVersion("v3 (legacy)", v3PdfJsUrl, v3WorkerUrl);
+    });
+
+    document.querySelector("#externalPdfLegacy").addEventListener("click", () => {
+      loadPdfVersion("v4 (legacy)", legacyPdfJsUrl, legacyWorkerUrl);
     });
 
     document.querySelector("#externalPdfModern").addEventListener("click", () => {
-      const preview = new FilePreview({
-        useCanvasRender: true,
-        pdfJsPath: modernPdfJsUrl,
-        pdfWorkerPath: modernWorkerUrl,
-      });
-      preview.loadFile({
-        name: "外置 modern PDF.js 测试",
-        file_type: 2,
-        pdf_url: pdfUrl,
-      });
-      status.textContent = "已切换为外置 modern PDF.js";
+      loadPdfVersion("v6 (modern)", modernPdfJsUrl, modernWorkerUrl);
+    });
+
+    document.querySelector("#externalPdfDefault").addEventListener("click", () => {
+      loadPdfVersion("v6 (默认)", null, null);
     });
   </script>
 </body>

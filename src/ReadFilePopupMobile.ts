@@ -1,7 +1,6 @@
 // ReadFilePopupMobile.ts
 import Popup from "@aggbond/my-popup";
 import { SecurityUtils, DEFAULT_SECURITY_CONFIG } from './security-config';
-import { pdfWorkerBase64 } from './pdf.worker.inline';
 
 interface FileObject {
   name?: string;
@@ -24,6 +23,26 @@ interface ListObject {
   checkButtonID?: string;
 }
 
+interface TabStyleConfig {
+  tabBarStyle?: Record<string, string>;
+  tabItemStyle?: Record<string, string>;
+  tabItemActiveStyle?: Record<string, string>;
+  tabTextStyle?: Record<string, string>;
+  tabTextActiveStyle?: Record<string, string>;
+  indicatorColor?: string;
+  tabMaxWidth?: string;
+  tabMinWidth?: string;
+}
+
+interface EditableAreaConfig {
+  enabled: boolean;
+  mode?: 'per-tab' | 'shared';
+  text?: string;
+  texts?: string[];
+  containerStyle?: Record<string, string>;
+  textStyle?: Record<string, string>;
+}
+
 interface CoerceReadList {
   titleText?: string;
   fileList: FileObject[];
@@ -39,6 +58,15 @@ interface CoerceReadList {
   btnBoxStyle?: Record<string, string>;
   showProgressInButton?: boolean | number;
   coerceCallBack?: ((control: ControlObject, buttonIndex: number) => void) | ((control: ControlObject) => void)[];
+  enableTabMode?: boolean;
+  tabButtonLinkMode?: 'linked' | 'noLinked';
+  tabStyle?: TabStyleConfig;
+  editableArea?: EditableAreaConfig;
+  onTabChange?: (params: {
+    fromIndex: number;
+    toIndex: number;
+    control: ControlObject;
+  }) => void;
 }
 
 interface ConfigOptions {
@@ -87,6 +115,8 @@ interface ControlObject {
   goTo: (index: number) => void;
   setCheckboxChecked: (isChecked: boolean) => void;
   isCheckboxChecked: () => boolean;
+  switchTab: (index: number) => void;
+  getCurrentTabIndex: () => number;
 }
 
 const myPopup = new Popup();
@@ -113,6 +143,7 @@ class FilePreview {
   private _delayTimer: number | null = null;
   private _beforeUnloadHandler: (() => void) | null = null;
   private _pageHideHandler: (() => void) | null = null;
+  private _activeTabIndex: number = 0;
 
   constructor(options: ConfigOptions) {
     // 默认配置
@@ -217,6 +248,11 @@ class FilePreview {
               console.log("btn[1]强制阅读弹窗结果：", control, buttonIndex);
             },
           ],
+          enableTabMode: false,
+          tabButtonLinkMode: 'linked' as const,
+          tabStyle: {},
+          editableArea: { enabled: false },
+          onTabChange: () => {},
         },
         isBindFileClick: false, // 是否需要绑定文件点击事件
         useCanvasRender: true,
@@ -270,33 +306,46 @@ class FilePreview {
   private async _loadPdfJs(): Promise<any> {
     if (this.pdfjsLib) return this.pdfjsLib;
 
-    let lib: any;
-    const pdfJsSource = this.Configns.pdfJsPath || 'pdfjs-dist';
+    const defaultPdfJsPath = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/legacy/build/pdf.mjs';
+    const defaultWorkerPath = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/legacy/build/pdf.worker.min.mjs';
+    const pdfJsSource = this.Configns.pdfJsPath || defaultPdfJsPath;
 
+    let lib: any;
     try {
-      lib = this.Configns.pdfJsPath
-        ? await import(/* @vite-ignore */ this.Configns.pdfJsPath)
-        : await import('pdfjs-dist');
+      lib = await import(/* @vite-ignore */ pdfJsSource);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       throw new Error(`无法加载 PDF.js 从 ${pdfJsSource}: ${message}`);
+    }
+
+    if (lib.default && !lib.getDocument) {
+      lib = lib.default;
+    }
+
+    if (!lib.getDocument && typeof window !== 'undefined' && (window as any).pdfjsLib) {
+      lib = (window as any).pdfjsLib;
     }
 
     if (lib.GlobalWorkerOptions) {
       if (this.Configns.pdfWorkerPath) {
         lib.GlobalWorkerOptions.workerSrc = this.Configns.pdfWorkerPath;
       } else {
-        const binaryString = atob(pdfWorkerBase64);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
+        const versionMatch = pdfJsSource.match(/pdfjs-dist@([^/]+)/);
+        if (versionMatch) {
+          const version = versionMatch[1];
+          const majorVersion = parseInt(version.split('.')[0], 10);
+          const isLegacy = pdfJsSource.includes('/legacy/');
+          const buildPath = isLegacy ? 'legacy/build' : 'build';
+          const workerExt = majorVersion <= 3 ? 'pdf.worker.min.js' : 'pdf.worker.min.mjs';
+          lib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${version}/${buildPath}/${workerExt}`;
+        } else {
+          lib.GlobalWorkerOptions.workerSrc = defaultWorkerPath;
         }
-        const blob = new Blob([bytes], { type: 'application/javascript' });
-        lib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(blob);
       }
     }
 
     this.pdfjsLib = lib;
+    console.log(`[ReadFilePopupMobile] PDF.js loaded: ${lib.version || 'unknown'} from ${pdfJsSource}`);
     return this.pdfjsLib;
   }
 
@@ -351,6 +400,7 @@ class FilePreview {
   destroy(): void {
     this._clearDelayTimer();
     this.clearPdfCache();
+    this._clearEditableState();
     if (this._beforeUnloadHandler) {
       window.removeEventListener('beforeunload', this._beforeUnloadHandler);
       this._beforeUnloadHandler = null;
@@ -540,7 +590,8 @@ class FilePreview {
 
     // 对用户输入进行 HTML 转义
     const safeCheckButtonID = SecurityUtils.escapeHtml(checkButtonID);
-    const safeListText = SecurityUtils.escapeHtml(listText);
+    // 使用 sanitizeHTML 支持 HTML 标签，同时防止 XSS 攻击
+    const safeListText = SecurityUtils.sanitizeHTML(listText || '', this.Configns.allowLinksAndImages);
 
     let html = `${isCheckButton ? `<input class="aggb-file-list-checkbox" type="checkbox" id="${safeCheckButtonID}" />` : ""
       }${safeListText}`;
@@ -805,21 +856,125 @@ class FilePreview {
       titleText,
       tipsText,
       showProgressInButton,
-      delayConfig
+      delayConfig,
+      enableTabMode,
+      tabButtonLinkMode = 'linked',
+      editableArea
     } = this.Configns.coerceReadList;
 
     if (fileList.length === 0) throw new Error("fileList不能为空");
+
+    this._activeTabIndex = 0;
 
     let currentIndex = 0;
     let customButtonTitles: string[] | null = null;
     // 记录已访问的文件索引，用于判断是否可以返回
     let visitedIndices = [0];
+
+    const isTabIndependent = enableTabMode && tabButtonLinkMode !== 'linked';
+
+    const control: ControlObject = {
+      next: () => {
+        if (isTabIndependent) return;
+        customButtonTitles = null;
+        if (currentIndex < fileList.length - 1) {
+          currentIndex++;
+          if (!visitedIndices.includes(currentIndex)) {
+            visitedIndices.push(currentIndex);
+          }
+          if (enableTabMode) {
+            this._activeTabIndex = currentIndex;
+            this._updateTabBarVisual();
+          }
+          showNextFile();
+        }
+      },
+      prev: () => {
+        if (isTabIndependent) return;
+        customButtonTitles = null;
+        if (currentIndex > 0) {
+          currentIndex--;
+          if (enableTabMode) {
+            this._activeTabIndex = currentIndex;
+            this._updateTabBarVisual();
+          }
+          showNextFile();
+        }
+      },
+      close: () => {
+        myPopup.close();
+      },
+      getCurrentIndex: () => currentIndex,
+      getFileList: () => [...fileList],
+      isLastFile: () => currentIndex === fileList.length - 1,
+      setButtonTitles: (titles) => {
+        if (Array.isArray(titles)) {
+          customButtonTitles = titles;
+        }
+      },
+      getVisitedIndices: () => [...visitedIndices],
+      goTo: (index) => {
+        if (isTabIndependent) return;
+        if (index >= 0 && index < fileList.length) {
+          customButtonTitles = null;
+          currentIndex = index;
+          if (!visitedIndices.includes(currentIndex)) {
+            visitedIndices.push(currentIndex);
+          }
+          if (enableTabMode) {
+            this._activeTabIndex = currentIndex;
+            this._updateTabBarVisual();
+          }
+          showNextFile();
+        }
+      },
+      setCheckboxChecked: (isChecked) => {
+        const checkboxId = this.Configns.listObj?.checkButtonID;
+        if (checkboxId) {
+          const checkbox = document.getElementById(checkboxId);
+          if (checkbox) {
+            (checkbox as HTMLInputElement).checked = isChecked;
+            const event = new Event("change");
+            checkbox.dispatchEvent(event);
+          }
+        }
+      },
+      isCheckboxChecked: () => {
+        const checkboxId = this.Configns.listObj?.checkButtonID;
+        if (checkboxId) {
+          const checkbox = document.getElementById(checkboxId);
+          return checkbox ? (checkbox as HTMLInputElement).checked : false;
+        }
+        return false;
+      },
+      switchTab: (index: number) => {
+        if (index >= 0 && index < fileList.length) {
+          const oldIndex = this._activeTabIndex;
+          this._activeTabIndex = index;
+          this._updateTabBarVisual();
+          currentIndex = index;
+          if (!visitedIndices.includes(currentIndex)) {
+            visitedIndices.push(currentIndex);
+          }
+          const onTabChange = this.Configns.coerceReadList.onTabChange;
+          if (onTabChange) {
+            onTabChange({
+              fromIndex: oldIndex,
+              toIndex: index,
+              control,
+            });
+          }
+          showNextFile();
+        }
+      },
+      getCurrentTabIndex: () => this._activeTabIndex,
+    };
+
     const showNextFile = async (_btnTitleArr?: string[]): Promise<void> => {
       if (currentIndex >= fileList.length) return;
       this._clearDelayTimer();
 
       const file = fileList[currentIndex];
-      const isLastFile = currentIndex === fileList.length - 1;
 
       // 确保文件类型已设置
       if (!file.file_type) {
@@ -836,78 +991,6 @@ class FilePreview {
         file,
         isCoerce: true,
       }) as string;
-
-      // 创建控制对象供外部回调使用
-      const control: ControlObject = {
-        next: () => {
-          // 下一份文件
-          // 重置自定义按钮文字状态
-          customButtonTitles = null;
-          currentIndex++;
-          // 记录访问过的索引
-          if (!visitedIndices.includes(currentIndex)) {
-            visitedIndices.push(currentIndex);
-          }
-          showNextFile();
-        },
-        prev: () => {
-          // 上一份文件
-          // 重置自定义按钮文字状态
-          customButtonTitles = null;
-          if (currentIndex > 0) {
-            currentIndex--;
-            showNextFile();
-          }
-        },
-        close: () => {
-          // 关闭弹窗
-          myPopup.close();
-        },
-        getCurrentIndex: () => currentIndex, // 获取当前索引
-        getFileList: () => [...fileList], // 返回副本防止外部修改
-        isLastFile: () => isLastFile, // 是否为最后一份文件
-        setButtonTitles: (titles) => {
-          // 允许外部修改按钮文字
-          if (Array.isArray(titles)) {
-            customButtonTitles = titles;
-          }
-        },
-        // 获取已访问的文件索引列表
-        getVisitedIndices: () => [...visitedIndices],
-        // 跳转到指定文件索引
-        goTo: (index) => {
-          if (index >= 0 && index < fileList.length) {
-            customButtonTitles = null;
-            currentIndex = index;
-            if (!visitedIndices.includes(currentIndex)) {
-              visitedIndices.push(currentIndex);
-            }
-            showNextFile();
-          }
-        },
-        // 控制复选框选中状态
-        setCheckboxChecked: (isChecked) => {
-          const checkboxId = this.Configns.listObj?.checkButtonID;
-          if (checkboxId) {
-            const checkbox = document.getElementById(checkboxId);
-            if (checkbox) {
-              (checkbox as HTMLInputElement).checked = isChecked;
-              // 触发change事件，确保相关回调被执行
-              const event = new Event("change");
-              checkbox.dispatchEvent(event);
-            }
-          }
-        },
-        // 获取复选框当前状态
-        isCheckboxChecked: () => {
-          const checkboxId = this.Configns.listObj?.checkButtonID;
-          if (checkboxId) {
-            const checkbox = document.getElementById(checkboxId);
-            return checkbox ? (checkbox as HTMLInputElement).checked : false;
-          }
-          return false;
-        },
-      };
 
       // 为每个按钮创建回调函数
       const callbacks: (() => void)[] = [];
@@ -970,20 +1053,40 @@ class FilePreview {
       }
       console.log("showNextFile", btnArr, finalButtons);
       const safeTipsText = tipsText ? SecurityUtils.escapeHtml(tipsText) : '';
-      const popupConfig = {
-        title:
-          file.name ||
-          `${titleText || "文件"} (${currentIndex + 1}/${fileList.length})`,
-        content: safeTipsText ? `<div class="aggb-tips-wrapper" style="display: flex;flex-direction: column;height: 100%;overflow:hidden;">
+      
+      const tabBarHtml = enableTabMode ? this._renderTabBar(currentIndex) : '';
+      const editableAreaHtml = editableArea?.enabled ? this._renderEditableArea(currentIndex) : '';
+      
+      let finalContent = '';
+      if (enableTabMode || editableArea?.enabled) {
+        finalContent = `
+          ${tabBarHtml}
+          <div class="aggb-coerce-body" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+            ${safeTipsText ? `<p class="aggb-tips-content" style="width: 100%;padding: 10px;background: #FFE7E5;color: #FF3B30;margin:0;box-sizing: border-box;flex-shrink: 0;">${safeTipsText}</p>` : ''}
+            <div class="aggb-file-content" style="flex: 1;overflow-y: auto;padding: ${file.file_type === 2 ? '0' : '0 20px'};">${fileContent}</div>
+            ${editableAreaHtml}
+          </div>
+        `;
+      } else {
+        finalContent = safeTipsText ? `<div class="aggb-tips-wrapper" style="display: flex;flex-direction: column;height: 100%;overflow:hidden;">
         <p class="aggb-tips-content" style="width: 100%;padding: 10px;background: #FFE7E5;color: #FF3B30;margin:0;box-sizing: border-box;flex-shrink: 0;">${safeTipsText}</p>
         <div class="aggb-file-content" style="flex: 1;overflow-y: auto;padding: ${file.file_type === 2 ? '0' : '0 20px'};">${fileContent}</div>
-        </div>` : fileContent,
-        contentStyle: tipsText ? { padding: '0' } : undefined,
+        </div>` : fileContent;
+      }
+      
+      const popupConfig = {
+        title: enableTabMode
+          ? (titleText || "请阅读文件")
+          : (file.name || `${titleText || "文件"} (${currentIndex + 1}/${fileList.length})`),
+        content: finalContent,
+        contentStyle: (tipsText || enableTabMode || editableArea?.enabled) ? { padding: '0' } : undefined,
         btnBoxStyle: btnBoxStyle || {
+          boxSizing: 'border-box',
           display: "flex",
           justifyContent: "space-around",
           alignItems: "center",
           padding: "0 2.4vw",
+          gap: '2.4vw'
         },
         btns: finalButtons,
         btnStyle: btnStyle || [
@@ -1071,6 +1174,15 @@ class FilePreview {
       if (file.file_type === 3 && file.com_terms) {
         this.bindFileClick(".ChoosePdfFileList", file.com_terms);
       }
+
+      if (enableTabMode) {
+        setTimeout(() => {
+          this._bindTabClickEvents('.aggb-tab-bar', (tabIndex) => {
+            control.switchTab(tabIndex);
+          });
+          this._updateTabBarVisual();
+        }, 50);
+      }
     };
 
     await showNextFile();
@@ -1111,6 +1223,159 @@ class FilePreview {
         this._clearDelayTimer();
       }
     }, 1000);
+  }
+
+  private _sanitizeStyleValue(value: string): string {
+    return value
+      .replace(/[<>{}]/g, '')
+      .replace(/expression\s*\(/gi, '')
+      .replace(/javascript\s*:/gi, '')
+      .replace(/url\s*\(/gi, '')
+      .replace(/import\s+/gi, '');
+  }
+
+  private _objToStr(style: Record<string, string>): string {
+    return Object.entries(style)
+      .map(([key, value]) => {
+        const cssKey = key.replace(/([A-Z])/g, '-$1').toLowerCase();
+        const safeValue = this._sanitizeStyleValue(value);
+        return `${cssKey}:${safeValue}`;
+      })
+      .join(';');
+  }
+
+  private _renderTabBar(activeIndex: number): string {
+    const fileList = this.Configns.coerceReadList.fileList;
+    const tabStyle = this.Configns.coerceReadList.tabStyle || {};
+
+    const defaultTabBarStyle: Record<string, string> = {
+      display: 'flex',
+      overflowX: 'auto',
+      overflowY: 'hidden',
+      whiteSpace: 'nowrap',
+      borderBottom: '1px solid #e5e5e5',
+      background: '#fafafa',
+      padding: '0 8px',
+      flexShrink: '0',
+      WebkitOverflowScrolling: 'touch',
+      scrollbarWidth: 'none',
+      ...tabStyle.tabBarStyle,
+    };
+
+    const tabsHtml = fileList.map((file, index) => {
+      const isActive = index === activeIndex;
+      const indicatorColor = this._sanitizeStyleValue(tabStyle.indicatorColor || '#29AEEF');
+      const baseStyle: Record<string, string> = {
+        display: 'inline-flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        padding: '10px 16px 8px',
+        cursor: 'pointer',
+        position: 'relative',
+        minWidth: tabStyle.tabMinWidth || '80px',
+        maxWidth: tabStyle.tabMaxWidth || '160px',
+        flexShrink: '0',
+        borderBottom: `2px solid ${isActive ? indicatorColor : 'transparent'}`,
+        color: isActive ? (tabStyle.tabTextActiveStyle?.color || indicatorColor) : (tabStyle.tabTextStyle?.color || '#666'),
+        fontWeight: isActive ? 'bold' : 'normal',
+        transition: 'all 0.2s',
+        ...(isActive ? tabStyle.tabItemActiveStyle : tabStyle.tabItemStyle),
+      };
+
+      const name = SecurityUtils.escapeHtml(file.name || `文件 ${index + 1}`);
+      return `<div class="aggb-tab-item ${isActive ? 'aggb-tab-active' : ''}"
+                   data-tab-index="${index}"
+                   style="${this._objToStr(baseStyle)}">
+                <span class="aggb-tab-text" style="font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">${name}</span>
+              </div>`;
+    }).join('');
+
+    return `<div class="aggb-tab-bar" style="${this._objToStr(defaultTabBarStyle)}">${tabsHtml}</div>`;
+  }
+
+  private _updateTabBarVisual(): void {
+    const tabItems = document.querySelectorAll('.aggb-tab-item');
+    const indicatorColor = this._sanitizeStyleValue(this.Configns.coerceReadList.tabStyle?.indicatorColor || '#29AEEF');
+
+    tabItems.forEach((item) => {
+      const el = item as HTMLElement;
+      const idx = parseInt(el.dataset.tabIndex || '-1', 10);
+      const isActive = idx === this._activeTabIndex;
+
+      el.classList.toggle('aggb-tab-active', isActive);
+      el.style.borderBottomColor = isActive ? indicatorColor : 'transparent';
+      el.style.color = isActive ? indicatorColor : '#666';
+      el.style.fontWeight = isActive ? 'bold' : 'normal';
+    });
+
+    const activeTab = document.querySelector('.aggb-tab-item.aggb-tab-active') as HTMLElement;
+    if (activeTab) {
+      activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }
+
+  private _renderEditableArea(tabIndex: number): string {
+    const config = this.Configns.coerceReadList.editableArea!;
+    const mode = config.mode || 'per-tab';
+
+    let displayText = '';
+    if (mode === 'per-tab' && config.texts && config.texts[tabIndex] !== undefined) {
+      displayText = config.texts[tabIndex];
+    } else if (config.text !== undefined) {
+      displayText = config.text;
+    }
+
+    if (!displayText) return '';
+
+    const containerStyle: Record<string, string> = {
+      padding: '10px 16px',
+      borderTop: '1px solid #f0f0f0',
+      background: '#fffdf5',
+      flexShrink: '0',
+      ...config.containerStyle,
+    };
+
+    const textStyle: Record<string, string> = {
+      fontSize: '14px',
+      color: '#666',
+      lineHeight: '1.5',
+      margin: '0',
+      wordBreak: 'break-all',
+      ...config.textStyle,
+    };
+
+    const safeText = SecurityUtils.escapeHtml(displayText);
+
+    return `<div class="aggb-editable-area" style="${this._objToStr(containerStyle)}">
+              <p class="aggb-editable-text" style="${this._objToStr(textStyle)}">${safeText}</p>
+            </div>`;
+  }
+
+  private _bindTabClickEvents(containerSelector: string, onTabClick: (tabIndex: number) => void): void {
+    const tabBar = document.querySelector(containerSelector) as HTMLElement | null;
+    if (!tabBar) return;
+
+    if (tabBar.dataset.tabBound === 'true') return;
+    tabBar.dataset.tabBound = 'true';
+
+    const handler = (event: Event) => {
+      const target = event.target as HTMLElement;
+      const tabItem = target.closest('.aggb-tab-item') as HTMLElement | null;
+      if (!tabItem) return;
+
+      const tabIndex = parseInt(tabItem.dataset.tabIndex || '-1', 10);
+      if (tabIndex < 0 || tabIndex >= this.Configns.coerceReadList.fileList.length) return;
+
+      if (tabIndex === this._activeTabIndex) return;
+
+      onTabClick(tabIndex);
+    };
+
+    tabBar.addEventListener('click', handler);
+  }
+
+  private _clearEditableState(): void {
+    this._activeTabIndex = 0;
   }
 
   // 加载文件内容

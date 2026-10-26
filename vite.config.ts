@@ -38,17 +38,20 @@ export default defineConfig({
     }),
   ],
   build: {
+    target: 'es2015',
     lib: {
       entry: resolve(__dirname, 'src/ReadFilePopupMobile.ts'),
       name: 'FilePreview',
-      formats: ['es', 'umd'],
+      formats: ['es'],
       fileName: (format) => `ReadFilePopupMobile.${format}.js`,
     },
     outDir: 'dist',
     minify: false,
     rollupOptions: {
+      external: ['pdfjs-dist'],
       output: {
-        exports: 'named'
+        exports: 'named',
+        inlineDynamicImports: true
       },
     },
   },

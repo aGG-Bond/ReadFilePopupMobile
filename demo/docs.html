@@ -1,0 +1,1527 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ReadFilePopupMobile API 文档</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --sidebar-w: 260px;
+      --accent: #3584e4;
+      --accent-dark: #1a5fb4;
+      --bg: #fff;
+      --bg-sidebar: #f9f9fb;
+      --bg-code: #1e1e2e;
+      --text: #1b1b1f;
+      --text-secondary: #5b5b66;
+      --border: #cdcdd3;
+      --radius: 8px;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      --font-mono: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', 'Courier New', monospace;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-sans);
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.7;
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ===== Sidebar ===== */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: var(--sidebar-w);
+      height: 100vh;
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 20px 0;
+      z-index: 100;
+    }
+
+    .sidebar-title {
+      font-size: 15px;
+      font-weight: 700;
+      padding: 0 20px 16px;
+      color: var(--accent-dark);
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 8px;
+    }
+
+    .sidebar-group {
+      padding: 8px 0;
+    }
+
+    .sidebar-group-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+      padding: 6px 20px;
+    }
+
+    .sidebar a {
+      display: block;
+      padding: 5px 20px 5px 28px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      border-left: 3px solid transparent;
+      transition: all 0.15s;
+    }
+
+    .sidebar a:hover {
+      color: var(--accent);
+      background: rgba(53, 132, 228, 0.06);
+    }
+
+    .sidebar a.active {
+      color: var(--accent);
+      border-left-color: var(--accent);
+      background: rgba(53, 132, 228, 0.08);
+      font-weight: 500;
+    }
+
+    /* ===== Main ===== */
+    .main {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      min-width: 0;
+    }
+
+    .hero {
+      padding: 48px 48px 32px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(135deg, #f0f4ff 0%, #faf5ff 100%);
+    }
+
+    .hero h1 {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 12px;
+      color: var(--text);
+    }
+
+    .hero p {
+      font-size: 17px;
+      color: var(--text-secondary);
+      max-width: 640px;
+      line-height: 1.8;
+    }
+
+    .hero .badges {
+      margin-top: 16px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 20px;
+      background: rgba(53, 132, 228, 0.1);
+      color: var(--accent-dark);
+    }
+
+    .content {
+      padding: 0 48px 80px;
+      max-width: 900px;
+    }
+
+    /* ===== Section ===== */
+    .section {
+      padding-top: 40px;
+    }
+
+    .section h2 {
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--accent);
+      color: var(--text);
+    }
+
+    .section h3 {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 28px 0 10px;
+      color: var(--text);
+    }
+
+    .section p {
+      margin-bottom: 14px;
+      color: var(--text-secondary);
+      font-size: 15px;
+    }
+
+    .section ul, .section ol {
+      margin: 0 0 14px 20px;
+      color: var(--text-secondary);
+      font-size: 15px;
+    }
+
+    .section li { margin-bottom: 4px; }
+
+    /* ===== Code Block ===== */
+    .code-block {
+      position: relative;
+      margin: 16px 0;
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid #2d2d3f;
+    }
+
+    .code-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 14px;
+      background: #181825;
+      border-bottom: 1px solid #2d2d3f;
+    }
+
+    .code-lang {
+      font-size: 12px;
+      font-weight: 500;
+      color: #a6adc8;
+      font-family: var(--font-mono);
+    }
+
+    .code-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .code-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 500;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: var(--font-sans);
+    }
+
+    .btn-copy {
+      background: rgba(255,255,255,0.08);
+      color: #cdd6f4;
+    }
+
+    .btn-copy:hover { background: rgba(255,255,255,0.15); }
+
+    .btn-copy.copied {
+      background: rgba(166, 227, 161, 0.2);
+      color: #a6e3a1;
+    }
+
+    .btn-run {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-run:hover { background: var(--accent-dark); }
+
+    .code-block pre {
+      margin: 0;
+      padding: 16px;
+      background: var(--bg-code);
+      overflow-x: auto;
+    }
+
+    .code-block code {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.65;
+      color: #cdd6f4;
+      white-space: pre;
+    }
+
+    /* Syntax Highlight (Catppuccin Mocha) */
+    .hljs-keyword { color: #cba6f7; }
+    .hljs-string { color: #a6e3a1; }
+    .hljs-number { color: #fab387; }
+    .hljs-comment { color: #6c7086; font-style: italic; }
+    .hljs-function { color: #89b4fa; }
+    .hljs-property { color: #89dceb; }
+    .hljs-punctuation { color: #9399b2; }
+    .hljs-operator { color: #94e2d5; }
+    .hljs-boolean { color: #fab387; }
+
+    /* ===== Preview Area ===== */
+    .preview-area {
+      margin: 16px 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: none;
+    }
+
+    .preview-area.visible { display: block; }
+
+    .preview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 14px;
+      background: #f4f4f7;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .preview-close {
+      background: none;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      padding: 0 4px;
+    }
+
+    .preview-close:hover { color: var(--text); }
+
+    .preview-area iframe {
+      width: 100%;
+      height: 420px;
+      border: none;
+      background: #fff;
+    }
+
+    /* ===== Inline Code ===== */
+    code:not(.code-block code) {
+      background: #f0f0f4;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: var(--font-mono);
+      color: #c7254e;
+    }
+
+    /* ===== Table ===== */
+    .param-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+      font-size: 14px;
+    }
+
+    .param-table th {
+      text-align: left;
+      padding: 10px 14px;
+      background: #f4f4f7;
+      border: 1px solid var(--border);
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .param-table td {
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    .param-table tr:hover td { background: #fafafe; }
+
+    .type-tag {
+      display: inline-block;
+      padding: 1px 6px;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      background: rgba(53, 132, 228, 0.1);
+      color: var(--accent-dark);
+      border-radius: 3px;
+    }
+
+    .default-tag {
+      display: inline-block;
+      padding: 1px 6px;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      background: #f0f0f4;
+      color: var(--text-secondary);
+      border-radius: 3px;
+    }
+
+    /* ===== Callout ===== */
+    .callout {
+      padding: 14px 18px;
+      margin: 16px 0;
+      border-radius: var(--radius);
+      font-size: 14px;
+      border-left: 4px solid;
+    }
+
+    .callout.info {
+      background: #eff6ff;
+      border-color: var(--accent);
+      color: #1e40af;
+    }
+
+    .callout.warning {
+      background: #fff7ed;
+      border-color: #f59e0b;
+      color: #92400e;
+    }
+
+    .callout.success {
+      background: #f0fdf4;
+      border-color: #22c55e;
+      color: #166534;
+    }
+
+    /* ===== Mobile ===== */
+    .menu-toggle {
+      display: none;
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      z-index: 200;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      width: 40px;
+      height: 40px;
+      font-size: 20px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    @media (max-width: 768px) {
+      .menu-toggle { display: block; }
+
+      .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.25s;
+        box-shadow: none;
+      }
+
+      .sidebar.open {
+        transform: translateX(0);
+        box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+      }
+
+      .main { margin-left: 0; }
+
+      .hero { padding: 60px 20px 24px; }
+      .hero h1 { font-size: 26px; }
+      .content { padding: 0 20px 60px; }
+    }
+  </style>
+</head>
+
+<body>
+  <button class="menu-toggle" id="menuToggle">&#9776;</button>
+
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-title">ReadFilePopupMobile</div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">快速开始</div>
+      <a href="#installation">安装</a>
+      <a href="#es-usage">ES Module 引入</a>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">文件预览</div>
+      <a href="#preview-basic">基础预览</a>
+      <a href="#preview-richtext">富文本 (file_type: 1)</a>
+      <a href="#preview-pdf">PDF 文件 (file_type: 2)</a>
+      <a href="#preview-quote">引用文本 (file_type: 3)</a>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">强制阅读</div>
+      <a href="#coerce-basic">基础强制阅读</a>
+      <a href="#coerce-progress">进度显示</a>
+      <a href="#coerce-delay">延迟配置</a>
+      <a href="#coerce-tips">提示信息</a>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">Tab 模式</div>
+      <a href="#tab-basic">基础 Tab 模式</a>
+      <a href="#tab-no-linked">不联动模式</a>
+      <a href="#tab-style">自定义 Tab 样式</a>
+      <a href="#tab-editable">独立文本区</a>
+      <a href="#tab-shared-editable">共享文本区</a>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">高级功能</div>
+      <a href="#file-list">文件列表</a>
+      <a href="#pdf-render">PDF 渲染模式</a>
+      <a href="#pdf-version">PDF.js 版本选择</a>
+      <a href="#security">安全配置</a>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">API 参考</div>
+      <a href="#api-options">配置选项</a>
+      <a href="#api-methods">实例方法</a>
+      <a href="#api-control">控制对象</a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="hero">
+      <h1>ReadFilePopupMobile</h1>
+      <p>移动端文件预览组件，支持 PDF、富文本、引用文本等多种文件类型。内置 XSS 防护、强制阅读弹窗、Tab 切换等功能。</p>
+      <div class="badges">
+        <span class="badge">PDF</span>
+        <span class="badge">富文本</span>
+        <span class="badge">XSS 防护</span>
+        <span class="badge">移动端适配</span>
+        <span class="badge">UMD / ESM</span>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ==================== 安装 ==================== -->
+      <div class="section" id="installation">
+        <h2>安装</h2>
+        <p>通过 npm 安装：</p>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">bash</span>
+            <div class="code-actions">
+              <button class="code-btn btn-copy" onclick="copyCode(this)">复制</button>
+            </div>
+          </div>
+          <pre><code>npm install @aggbond/my-file-preview-mobile</code></pre>
+        </div>
+      </div>
+
+      <!-- ==================== ES Module 引入 ==================== -->
+      <div class="section" id="es-usage">
+        <h2>ES Module 引入</h2>
+        <p>本插件仅提供 ES Module 格式，使用 <code>import</code> 引入：</p>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">js</span>
+            <div class="code-actions">
+              <button class="code-btn btn-copy" onclick="copyCode(this)">复制</button>
+              <button class="code-btn btn-run" onclick="runCode(this)">运行</button>
+            </div>
+          </div>
+          <pre><code class="lang-js">import FilePreview from '@aggbond/my-file-preview-mobile';
+
+const preview = new FilePreview({});
+preview.loadFile({
+  name: '用户协议',
+  file_type: 1,
+  content_text: '&lt;h2&gt;用户协议&lt;/h2&gt;&lt;p&gt;协议内容...&lt;/p&gt;'
+});</code></pre>
+        </div>
+        <div class="preview-area" id="preview-es-usage">
+          <div class="preview-header">
+            <span>实时预览</span>
+            <button class="preview-close" onclick="closePreview('preview-es-usage')">&times;</button>
+          </div>
+          <iframe></iframe>
+        </div>
+      </div>
+
+      <!-- ==================== 基础预览 ==================== -->
+      <div class="section" id="preview-basic">
+        <h2>基础预览</h2>
+        <p>通过 <code>loadFile()</code> 方法加载文件。支持传入路径字符串或文件对象，不指定 <code>file_type</code> 时自动判断类型。</p>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">js</span>
+            <div class="code-actions">
+              <button class="code-btn btn-copy" onclick="copyCode(this)">复制</button>
+              <button class="code-btn btn-run" onclick="runCode(this)">运行</button>
+            </div>
+          </div>
+          <pre><code class="lang-js">const preview = new FilePreview({});
+
+// 通过 URL 加载
+preview.loadFile('https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf', 'PDF 文档');
+
+// 通过文件对象加载（自动判断类型）
+preview.loadFile({ pdf_url: 'https://example.com/doc.pdf' });</code></pre>
+        </div>
+        <div class="preview-area" id="preview-preview-basic">
+          <div class="preview-header">
+            <span>实时预览</span>
+            <button class="preview-close" onclick="closePreview('preview-preview-basic')">&times;</button>
+          </div>
+          <iframe></iframe>
+        </div>
+      </div>
+
+      <!-- ==================== 富文本 ==================== -->
+      <div class="section" id="preview-richtext">
+        <h2>富文本预览 (file_type: 1)</h2>
+        <p>直接显示 HTML 内容，内置 DOMPurify 自动净化防止 XSS 攻击。</p>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">js</span>
+            <div class="code-actions">
+              <button class="code-btn btn-copy" onclick="copyCode(this)">复制</button>
+              <button class="code-btn btn-run" onclick="runCode(this)">运行</button>
+            </div>
+          </div>
+          <pre><code class="lang-js">const preview = new FilePreview({});
+
+preview.loadFile({
+  name: '用户协议',
+  file_type: 1,
+  content_text: '&lt;h2&gt;用户协议&lt;/h2&gt;' +
+    '&lt;p&gt;欢迎使用我们的服务...&lt;/p&gt;' +
+    '&lt;p&gt;&lt;strong&gt;重要条款：&lt;/strong&gt;请仔细阅读以下内容。&lt;/p&gt;' +
+    '&lt;ul&gt;&lt;li&gt;条款一&lt;/li&gt;&lt;li&gt;条款二&lt;/li&gt;&lt;li&gt;条款三&lt;/li&gt;&lt;/ul&gt;'
+});</code></pre>
+        </div>
+        <div class="preview-area" id="preview-preview-richtext">
+          <div class="preview-header">
+            <span>实时预览</span>
+            <button class="preview-close" onclick="closePreview('preview-preview-richtext')">&times;</button>
+          </div>
+          <iframe></iframe>
+        </div>
+      </div>
+
+      <!-- ==================== PDF ==================== -->
+      <div class="section" id="preview-pdf">
+        <h2>PDF 文件预览 (file_type: 2)</h2>
+        <p>使用 Canvas 或 iframe 渲染 PDF 文件。PDF.js 通过 CDN 动态加载，无需打包。</p>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">js</span>
+            <div class="code-actions">
+              <button class="code-btn btn-copy" onclick="copyCode(this)">复制</button>
+              <button class="code-btn btn-run" onclick="runCode(this)">运行</button>
+            </div>
+          </div>
+          <pre><code class="lang-js">const preview = new FilePreview({
+  useCanvasRender: true
+});
+
+preview.loadFile({
+  name: 'PDF 文档',
+  file_type: 2,
+  pdf_url: 'https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf'
+}).catch(error =&gt; {
+  alert('加载失败: ' + error.message);
+});</code></pre>
+        </div>
+        <div class="preview-area" id="preview-preview-pdf">
+          <div class="preview-header">
+            <span>实时预览</span>
+            <button class="preview-close" onclick="closePreview('preview-preview-pdf')">&times;</button>
+          </div>
+          <iframe></iframe>
+        </div>
+      </div>
+
+      <!-- ==================== 引用文本 ==================== -->
+      <div class="section" id="preview-quote">
+        <h2>引用文本 (file_type: 3)</h2>
+        <p>包含多个子文件的复合文档，通过 <code>com_terms</code> 数组传入多份文件，支持混合富文本和 PDF。</p>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">js</span>
+            <div class="code-actions">
+              <button class="code-btn btn-copy" onclick="copyCode(this)">复制</button>
+              <button class="code-btn btn-run" onclick="runCode(this)">运行</button>
+            </div>
+          </div>
+          <pre><code class="lang-js">const preview = new FilePreview({});
+
+preview.loadFile({
+  name: '服务条款',
+  file_type: 3,
+  com_terms: [
+    {
+      name: '条款一：用户协议',
+      file_type: 1,
+      content_text: '&lt;h2&gt;条款一&lt;/h2&gt;&lt;p&gt;用户协议内容...&lt;/p&gt;'
+    },
+    {
+      name: '条款二：隐私政策',
+      file_type: 1,
+      content_text: '&lt;h2&gt;条款二&lt;/h2&gt;&lt;p&gt;隐私政策内容...&lt;/p&gt;'
+    }
+  ]
+});</code></pre>
+        </div>
+        <div class="preview-area" id="preview-preview-quote">
+          <div class="preview-header">
+            <span>实时预览</span>
+            <button class="preview-close" onclick="closePreview('preview-preview-quote')">&times;</button>
+          </div>
+          <iframe></iframe>
+        </div>
+      </div>
+
+      <!-- ==================== 基础强制阅读 ==================== -->
+      <div class="section" id="coerce-basic">
+        <h2>基础强制阅读</h2>
+        <p>通过 <code>coerceReadList</code> 配置强制阅读弹窗，用户必须逐个阅读文件后才能操作。</p>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">js</span>
+            <div class="code-actions">
+              <button class="code-btn btn-copy" onclick="copyCode(this)">复制</button>
+              <button class="code-btn btn-run" onclick="runCode(this)">运行</button>
+            </div>
+          </div>
+          <pre><code class="lang-js">const preview = new FilePreview({
+  coerceReadList: {
+    titleText: '请阅读以下文件',
+    fileList: [
+      {
+        name: '用户协议',
+        file_type: 1,
+        content_text: '&lt;h2&gt;用户协议&lt;/h2&gt;&lt;p&gt;欢迎使用我们的服务...&lt;/p&gt;'
+      },
+      {
+        name: '隐私政策',
+        file_type: 1,
+        content_text: '&lt;h2&gt;隐私政策&lt;/h2&gt;&lt;p&gt;我们重视您的隐私保护...&lt;/p&gt;'
+      }
+    ],
+    btnArr: ['同意并继续', '拒绝'],
+    coerceCallBack: (control, buttonIndex) =&gt; {
+      if (buttonIndex === 0) {
+        if (control.isLastFile()) {
+          alert('已完成所有文件阅读！');
+          control.close();
+        } else {
+          control.next();
+        }
+      } else {
+        control.close();
+      }
+    }
+  }
+});
+preview.openCoerceReadPopup();</code></pre>
+        </div>
+        <div class="preview-area" id="preview-coerce-basic">
+          <div class="preview-header">
+            <span>实时预览</span>
+            <button class="preview-close" onclick="closePreview('preview-coerce-basic')">&times;</button>
+          </div>
+          <iframe></iframe>
+        </div>
+      </div>
+
+      <!-- ==================== 进度显示 ==================== -->
+      <div class="section" id="coerce-progress">
+        <h2>进度显示</h2>
+        <p>设置 <code>showProgressInButton: true</code>，在按钮上显示当前阅读进度（如 "1/3"）。</p>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">js</span>
+            <div class="code-actions">
+              <button class="code-btn btn-copy" onclick="copyCode(this)">复制</button>
+              <button class="code-btn btn-run" onclick="runCode(this)">运行</button>
+            </div>
+          </div>
+          <pre><code class="lang-js">const preview = new FilePreview({
+  coerceReadList: {
+    titleText: '请阅读以下文件',
+    fileList: [
+      { name: '用户协议', file_type: 1, content_text: '&lt;h2&gt;用户协议&lt;/h2&gt;&lt;p&gt;协议内容...&lt;/p&gt;' },
+      { name: '免责条款', file_type: 1, content_text: '&lt;h2&gt;免责条款&lt;/h2&gt;&lt;p&gt;条款内容...&lt;/p&gt;' },
+      { name: '隐私政策', file_type: 1, content_text: '&lt;h2&gt;隐私政策&lt;/h2&gt;&lt;p&gt;政策内容...&lt;/p&gt;' }
+    ],
+    btnArr: ['同意并继续', '拒绝'],
+    showProgressInButton: true,
+    coerceCallBack: (control, buttonIndex) =&gt; {
+      if (buttonIndex === 0) {
+        if (control.isLastFile()) {
+          alert('已完成所有文件阅读！');
+          control.close();
+        } else {
+          control.next();
+        }
+      } else {
+        control.close();
+      }
+    }
+  }
+});
+preview.openCoerceReadPopup();</code></pre>
+        </div>
+        <div class="preview-area" id="preview-coerce-progress">
+          <div class="preview-header">
+            <span>实时预览</span>
+            <button class="preview-close" onclick="closePreview('preview-coerce-progress')">&times;</button>
+          </div>
+          <iframe></iframe>
+        </div>
+      </div>
+
+      <!-- ==================== 延迟配置 ==================== -->
+      <div class="section" id="coerce-delay">
+        <h2>延迟配置</h2>
+        <p>通过 <code>delayConfig</code> 设置按钮倒计时，文件加载完成后开始计时，倒计时结束前按钮不可点击。</p>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">js</span>
+            <div class="code-actions">
+              <button class="code-btn btn-copy" onclick="copyCode(this)">复制</button>
+              <button class="code-btn btn-run" onclick="runCode(this)">运行</button>
+            </div>
+          </div>
+          <pre><code class="lang-js">const preview = new FilePreview({
+  coerceReadList: {
+    titleText: '请阅读以下文件',
+    tipsText: '倒计时结束后才能点击同意',
+    fileList: [
+      { name: '用户协议', file_type: 1, content_text: '&lt;h2&gt;用户协议&lt;/h2&gt;&lt;p&gt;协议内容...&lt;/p&gt;' }
+    ],
+    btnArr: ['同意', '拒绝'],
+    delayConfig: {
+      seconds: 5,
+      buttonIndex: 0,
+      text: '请阅读 {seconds} 秒'
+    },
+    coerceCallBack: (control, buttonIndex) =&gt; {
+      if (buttonIndex === 0) {
+        alert('已同意！');
+        control.close();
+      } else {
+        control.close();
+      }
+    }
+  }
+});
+preview.openCoerceReadPopup();</code></pre>
+        </div>
+        <div class="preview-area" id="preview-coerce-delay">
+          <div class="preview-header">
+            <span>实时预览</span>
+            <button class="preview-close" onclick="closePreview('preview-coerce-delay')">&times;</button>
+          </div>
+          <iframe></iframe>
+        </div>
+        <div class="callout info">
+          <strong>参数说明：</strong><code>seconds</code> 为延迟秒数，<code>buttonIndex</code> 为延迟作用的按钮索引，<code>text</code> 中 <code>{seconds}</code> 会被替换为剩余秒数。
+        </div>
+      </div>
+
+      <!-- ==================== 提示信息 ==================== -->
+      <div class="section" id="coerce-tips">
+        <h2>提示信息 (tipsText)</h2>
+        <p>在弹窗顶部显示提示信息，自动 HTML 转义防止 XSS。样式为红色背景高亮。</p>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">js</span>
+            <div class="code-actions">
+              <button class="code-btn btn-copy" onclick="copyCode(this)">复制</button>
+              <button class="code-btn btn-run" onclick="runCode(this)">运行</button>
+            </div>
+          </div>
+          <pre><code class="lang-js">const preview = new FilePreview({
+  coerceReadList: {
+    titleText: '服务条款',
+    tipsText: '请仔细阅读以下文件内容，阅读完毕后点击按钮继续。',
+    fileList: [
+      { name: '用户协议', file_type: 1, content_text: '&lt;h2&gt;用户协议&lt;/h2&gt;&lt;p&gt;协议内容...&lt;/p&gt;' }
+    ],
+    btnArr: ['我已阅读并同意', '不同意'],
+    coerceCallBack: (control, buttonIndex) =&gt; {
+      control.close();
+    }
+  }
+});
+preview.openCoerceReadPopup();</code></pre>
+        </div>
+        <div class="preview-area" id="preview-coerce-tips">
+          <div class="preview-header">
+            <span>实时预览</span>
+            <button class="preview-close" onclick="closePreview('preview-coerce-tips')">&times;</button>
+          </div>
+          <iframe></iframe>
+        </div>
+      </div>
+
+      <!-- ==================== 基础 Tab 模式 ==================== -->
+      <div class="section" id="tab-basic">
+        <h2>基础 Tab 模式</h2>
+        <p>设置 <code>enableTabMode: true</code>，多文件以顶部 Tab 栏形式切换展示，而非逐个翻页。</p>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">js</span>
+            <div class="code-actions">
+              <button class="code-btn btn-copy" onclick="copyCode(this)">复制</button>
+              <button class="code-btn btn-run" onclick="runCode(this)">运行</button>
+            </div>
+          </div>
+          <pre><code class="lang-js">const preview = new FilePreview({
+  coerceReadList: {
+    titleText: '请阅读以下文件',
+    fileList: [
+      { name: '用户协议', file_type: 1, content_text: '&lt;h2&gt;用户协议&lt;/h2&gt;&lt;p&gt;协议内容...&lt;/p&gt;' },
+      { name: '隐私政策', file_type: 1, content_text: '&lt;h2&gt;隐私政策&lt;/h2&gt;&lt;p&gt;政策内容...&lt;/p&gt;' },
+      { name: '服务条款', file_type: 1, content_text: '&lt;h2&gt;服务条款&lt;/h2&gt;&lt;p&gt;条款内容...&lt;/p&gt;' }
+    ],
+    btnArr: ['同意', '拒绝'],
+    enableTabMode: true,
+    coerceCallBack: (control, buttonIndex) =&gt; {
+      if (buttonIndex === 0) {
+        alert('已同意！');
+        control.close();
+      } else {
+        control.close();
+      }
+    }
+  }
+});
+preview.openCoerceReadPopup();</code></pre>
+        </div>
+        <div class="preview-area" id="preview-tab-basic">
+          <div class="preview-header">
+            <span>实时预览</span>
+            <button class="preview-close" onclick="closePreview('preview-tab-basic')">&times;</button>
+          </div>
+          <iframe></iframe>
+        </div>
+      </div>
+
+      <!-- ==================== 不联动模式 ==================== -->
+      <div class="section" id="tab-no-linked">
+        <h2>Tab 不联动模式</h2>
+        <p>设置 <code>tabButtonLinkMode: 'noLinked'</code>，只有 Tab 能切换文件，底部按钮仅触发回调。</p>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">js</span>
+            <div class="code-actions">
+              <button class="code-btn btn-copy" onclick="copyCode(this)">复制</button>
+              <button class="code-btn btn-run" onclick="runCode(this)">运行</button>
+            </div>
+          </div>
+          <pre><code class="lang-js">const preview = new FilePreview({
+  coerceReadList: {
+    titleText: '请阅读以下文件',
+    fileList: [
+      { name: '用户协议', file_type: 1, content_text: '&lt;h2&gt;用户协议&lt;/h2&gt;&lt;p&gt;协议内容...&lt;/p&gt;' },
+      { name: '隐私政策', file_type: 1, content_text: '&lt;h2&gt;隐私政策&lt;/h2&gt;&lt;p&gt;政策内容...&lt;/p&gt;' },
+      { name: '服务条款', file_type: 1, content_text: '&lt;h2&gt;服务条款&lt;/h2&gt;&lt;p&gt;条款内容...&lt;/p&gt;' }
+    ],
+    btnArr: ['同意', '拒绝'],
+    enableTabMode: true,
+    tabButtonLinkMode: 'noLinked',
+    coerceCallBack: (control, buttonIndex) =&gt; {
+      if (buttonIndex === 0) {
+        alert('已同意！');
+        control.close();
+      } else {
+        control.close();
+      }
+    }
+  }
+});
+preview.openCoerceReadPopup();</code></pre>
+        </div>
+        <div class="preview-area" id="preview-tab-no-linked">
+          <div class="preview-header">
+            <span>实时预览</span>
+            <button class="preview-close" onclick="closePreview('preview-tab-no-linked')">&times;</button>
+          </div>
+          <iframe></iframe>
+        </div>
+      </div>
+
+      <!-- ==================== 自定义 Tab 样式 ==================== -->
+      <div class="section" id="tab-style">
+        <h2>自定义 Tab 样式</h2>
+        <p>通过 <code>tabStyle</code> 对象自定义 Tab 栏的颜色、宽度、文字样式等。</p>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">js</span>
+            <div class="code-actions">
+              <button class="code-btn btn-copy" onclick="copyCode(this)">复制</button>
+              <button class="code-btn btn-run" onclick="runCode(this)">运行</button>
+            </div>
+          </div>
+          <pre><code class="lang-js">const preview = new FilePreview({
+  coerceReadList: {
+    titleText: '请阅读以下文件',
+    fileList: [
+      { name: '用户协议', file_type: 1, content_text: '&lt;h2&gt;用户协议&lt;/h2&gt;&lt;p&gt;协议内容...&lt;/p&gt;' },
+      { name: '隐私政策', file_type: 1, content_text: '&lt;h2&gt;隐私政策&lt;/h2&gt;&lt;p&gt;政策内容...&lt;/p&gt;' },
+      { name: '服务条款', file_type: 1, content_text: '&lt;h2&gt;服务条款&lt;/h2&gt;&lt;p&gt;条款内容...&lt;/p&gt;' }
+    ],
+    btnArr: ['同意', '拒绝'],
+    enableTabMode: true,
+    tabStyle: {
+      indicatorColor: '#FF6B00',
+      tabMaxWidth: '120px',
+      tabMinWidth: '80px',
+      tabTextStyle: { color: '#999' },
+      tabTextActiveStyle: { color: '#FF6B00' },
+      tabBarStyle: { background: '#fff' },
+      tabItemStyle: { padding: '10px' },
+      tabItemActiveStyle: { fontWeight: 'bold' }
+    },
+    coerceCallBack: (control, buttonIndex) =&gt; {
+      if (buttonIndex === 0) {
+        alert('已同意！');
+        control.close();
+      } else {
+        control.close();
+      }
+    }
+  }
+});
+preview.openCoerceReadPopup();</code></pre>
+        </div>
+        <div class="preview-area" id="preview-tab-style">
+          <div class="preview-header">
+            <span>实时预览</span>
+            <button class="preview-close" onclick="closePreview('preview-tab-style')">&times;</button>
+          </div>
+          <iframe></iframe>
+        </div>
+
+        <h3>tabStyle 参数</h3>
+        <table class="param-table">
+          <thead><tr><th>参数</th><th>类型</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr><td><code>indicatorColor</code></td><td><span class="type-tag">string</span></td><td>底部指示条颜色</td></tr>
+            <tr><td><code>tabMaxWidth</code></td><td><span class="type-tag">string</span></td><td>Tab 最大宽度</td></tr>
+            <tr><td><code>tabMinWidth</code></td><td><span class="type-tag">string</span></td><td>Tab 最小宽度</td></tr>
+            <tr><td><code>tabTextStyle</code></td><td><span class="type-tag">object</span></td><td>Tab 文字样式</td></tr>
+            <tr><td><code>tabTextActiveStyle</code></td><td><span class="type-tag">object</span></td><td>选中 Tab 文字样式</td></tr>
+            <tr><td><code>tabBarStyle</code></td><td><span class="type-tag">object</span></td><td>Tab 栏容器样式</td></tr>
+            <tr><td><code>tabItemStyle</code></td><td><span class="type-tag">object</span></td><td>Tab 项样式</td></tr>
+            <tr><td><code>tabItemActiveStyle</code></td><td><span class="type-tag">object</span></td><td>选中 Tab 项样式</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ==================== 独立文本区 ==================== -->
+      <div class="section" id="tab-editable">
+        <h2>独立文本区 (per-tab)</h2>
+        <p>在 Tab 模式下，为每个 Tab 显示独立的提示文本。设置 <code>editableArea.mode: 'per-tab'</code>。</p>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">js</span>
+            <div class="code-actions">
+              <button class="code-btn btn-copy" onclick="copyCode(this)">复制</button>
+              <button class="code-btn btn-run" onclick="runCode(this)">运行</button>
+            </div>
+          </div>
+          <pre><code class="lang-js">const preview = new FilePreview({
+  coerceReadList: {
+    titleText: '请阅读以下文件',
+    fileList: [
+      { name: '用户协议', file_type: 1, content_text: '&lt;h2&gt;用户协议&lt;/h2&gt;&lt;p&gt;协议内容...&lt;/p&gt;' },
+      { name: '隐私政策', file_type: 1, content_text: '&lt;h2&gt;隐私政策&lt;/h2&gt;&lt;p&gt;政策内容...&lt;/p&gt;' }
+    ],
+    btnArr: ['同意', '拒绝'],
+    enableTabMode: true,
+    editableArea: {
+      enabled: true,
+      mode: 'per-tab',
+      texts: [
+        '请仔细阅读用户协议，如有疑问请联系客服。',
+        '我们重视您的隐私保护，详情请查看完整政策。'
+      ],
+      textStyle: {
+        color: '#FF6B00',
+        fontWeight: 'bold'
+      }
+    },
+    onTabChange: ({ fromIndex, toIndex }) =&gt; {
+      console.log(`从 Tab ${fromIndex} 切换到 Tab ${toIndex}`);
+    },
+    coerceCallBack: (control, buttonIndex) =&gt; {
+      if (buttonIndex === 0) {
+        alert('已同意！');
+        control.close();
+      } else {
+        control.close();
+      }
+    }
+  }
+});
+preview.openCoerceReadPopup();</code></pre>
+        </div>
+        <div class="preview-area" id="preview-tab-editable">
+          <div class="preview-header">
+            <span>实时预览</span>
+            <button class="preview-close" onclick="closePreview('preview-tab-editable')">&times;</button>
+          </div>
+          <iframe></iframe>
+        </div>
+      </div>
+
+      <!-- ==================== 共享文本区 ==================== -->
+      <div class="section" id="tab-shared-editable">
+        <h2>共享文本区 (shared)</h2>
+        <p>所有 Tab 显示相同的提示文本。设置 <code>editableArea.mode: 'shared'</code>。</p>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">js</span>
+            <div class="code-actions">
+              <button class="code-btn btn-copy" onclick="copyCode(this)">复制</button>
+              <button class="code-btn btn-run" onclick="runCode(this)">运行</button>
+            </div>
+          </div>
+          <pre><code class="lang-js">const preview = new FilePreview({
+  coerceReadList: {
+    titleText: '请阅读以下文件',
+    fileList: [
+      { name: '用户协议', file_type: 1, content_text: '&lt;h2&gt;用户协议&lt;/h2&gt;&lt;p&gt;协议内容...&lt;/p&gt;' },
+      { name: '隐私政策', file_type: 1, content_text: '&lt;h2&gt;隐私政策&lt;/h2&gt;&lt;p&gt;政策内容...&lt;/p&gt;' }
+    ],
+    btnArr: ['同意', '拒绝'],
+    enableTabMode: true,
+    editableArea: {
+      enabled: true,
+      mode: 'shared',
+      text: '请仔细阅读以上所有文件内容，如有疑问请联系客服。',
+      containerStyle: {
+        background: '#f0f9ff',
+        borderTop: '2px solid #1890ff'
+      }
+    },
+    coerceCallBack: (control, buttonIndex) =&gt; {
+      if (buttonIndex === 0) {
+        alert('已同意！');
+        control.close();
+      } else {
+        control.close();
+      }
+    }
+  }
+});
+preview.openCoerceReadPopup();</code></pre>
+        </div>
+        <div class="preview-area" id="preview-tab-shared-editable">
+          <div class="preview-header">
+            <span>实时预览</span>
+            <button class="preview-close" onclick="closePreview('preview-tab-shared-editable')">&times;</button>
+          </div>
+          <iframe></iframe>
+        </div>
+      </div>
+
+      <!-- ==================== 文件列表 ==================== -->
+      <div class="section" id="file-list">
+        <h2>文件列表</h2>
+        <p>通过 <code>isDrawFileList: true</code> 和 <code>listObj</code> 配置，在指定容器中渲染文件列表，支持复选框和点击预览。</p>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">html + js</span>
+            <div class="code-actions">
+              <button class="code-btn btn-copy" onclick="copyCode(this)">复制</button>
+              <button class="code-btn btn-run" onclick="runCode(this)">运行</button>
+            </div>
+          </div>
+          <pre><code class="lang-html">&lt;div id="fileList"&gt;&lt;/div&gt;
+
+&lt;script type="module"&gt;
+import FilePreview from '/dist/ReadFilePopupMobile.es.js';
+
+const preview = new FilePreview({
+  isDrawFileList: true,
+  isBindFileClick: true,
+  listObj: {
+    listId: '#fileList',
+    fileStyle: {
+      'color': '#007AFF',
+      'cursor': 'pointer'
+    },
+    listText: '本保险保障范围仅限&lt;span style="color: #FF0000"&gt;乘坐本班次客运汽车&lt;/span&gt;',
+    fileList: [
+      { name: '用户协议', file_type: 1, content_text: '&lt;h2&gt;用户协议&lt;/h2&gt;&lt;p&gt;协议内容...&lt;/p&gt;' },
+      { name: '隐私政策', file_type: 1, content_text: '&lt;h2&gt;隐私政策&lt;/h2&gt;&lt;p&gt;政策内容...&lt;/p&gt;' }
+    ],
+    isCheckButton: true,
+    checkCallBack: (isChecked) =&gt; {
+      console.log('复选框状态：', isChecked);
+    }
+  }
+});
+&lt;/script&gt;</code></pre>
+        </div>
+        <div class="preview-area" id="preview-file-list">
+          <div class="preview-header">
+            <span>实时预览</span>
+            <button class="preview-close" onclick="closePreview('preview-file-list')">&times;</button>
+          </div>
+          <iframe></iframe>
+        </div>
+      </div>
+
+      <!-- ==================== PDF 渲染模式 ==================== -->
+      <div class="section" id="pdf-render">
+        <h2>PDF 渲染模式</h2>
+        <p>通过 <code>useCanvasRender</code> 控制 PDF 渲染方式。</p>
+        <table class="param-table">
+          <thead><tr><th>值</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr><td><code>true</code></td><td>Canvas 渲染（默认，适合移动端）</td></tr>
+            <tr><td><code>false</code></td><td>iframe 渲染</td></tr>
+            <tr><td><code>'auto'</code></td><td>自动检测（移动端 Canvas，桌面端 iframe）</td></tr>
+          </tbody>
+        </table>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">js</span>
+            <div class="code-actions">
+              <button class="code-btn btn-copy" onclick="copyCode(this)">复制</button>
+            </div>
+          </div>
+          <pre><code class="lang-js">// Canvas 渲染（默认，适合移动端）
+new FilePreview({ useCanvasRender: true });
+
+// iframe 渲染
+new FilePreview({ useCanvasRender: false });
+
+// 自动检测
+new FilePreview({ useCanvasRender: 'auto' });</code></pre>
+        </div>
+      </div>
+
+      <!-- ==================== PDF.js 版本选择 ==================== -->
+      <div class="section" id="pdf-version">
+        <h2>PDF.js 版本选择</h2>
+        <p>通过 <code>pdfJsPath</code> 和 <code>pdfWorkerPath</code> 指定 PDF.js 版本。未指定时默认从 CDN 加载 <code>pdfjs-dist@6.2.108</code>。</p>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">js</span>
+            <div class="code-actions">
+              <button class="code-btn btn-copy" onclick="copyCode(this)">复制</button>
+              <button class="code-btn btn-run" onclick="runCode(this)">运行</button>
+            </div>
+          </div>
+          <pre><code class="lang-js">// 兼容旧版 iOS（如 iOS 10.3+），使用 v3 legacy
+const preview = new FilePreview({
+  useCanvasRender: true,
+  pdfJsPath: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.js',
+  pdfWorkerPath: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.worker.min.js'
+});
+
+preview.loadFile({
+  name: 'PDF 文档',
+  file_type: 2,
+  pdf_url: 'https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf'
+});</code></pre>
+        </div>
+        <div class="preview-area" id="preview-pdf-version">
+          <div class="preview-header">
+            <span>实时预览</span>
+            <button class="preview-close" onclick="closePreview('preview-pdf-version')">&times;</button>
+          </div>
+          <iframe></iframe>
+        </div>
+
+        <div class="callout warning">
+          <strong>版本兼容性：</strong>v3.x legacy 兼容 iOS 10.3+（推荐），v4.x legacy 需 iOS 16.4+，v6.x 需 iOS 17+。只指定 <code>pdfJsPath</code> 时，Worker 地址会自动推导。
+        </div>
+
+        <table class="param-table">
+          <thead><tr><th>PDF.js 版本</th><th>最低 iOS</th><th>路径</th></tr></thead>
+          <tbody>
+            <tr><td>v3.x (3.11.174) legacy</td><td>iOS 10.3+</td><td><code>legacy/build/pdf.js</code></td></tr>
+            <tr><td>v4.x (4.10.38) legacy</td><td>iOS 16.4+</td><td><code>legacy/build/pdf.mjs</code></td></tr>
+            <tr><td>v6.x (6.2.108)</td><td>iOS 17+</td><td><code>legacy/build/pdf.mjs</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ==================== 安全配置 ==================== -->
+      <div class="section" id="security">
+        <h2>安全配置</h2>
+        <p>通过 <code>allowLinksAndImages</code> 控制是否允许富文本中的链接和图片标签。</p>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">js</span>
+            <div class="code-actions">
+              <button class="code-btn btn-copy" onclick="copyCode(this)">复制</button>
+            </div>
+          </div>
+          <pre><code class="lang-js">// 默认模式：过滤 a/img 标签
+new FilePreview({});
+
+// 允许链接和图片
+new FilePreview({ allowLinksAndImages: true });</code></pre>
+        </div>
+        <div class="callout warning">
+          <strong>安全提示：</strong>开启 <code>allowLinksAndImages</code> 时，请确保富文本内容来源可信，避免 XSS 风险。
+        </div>
+      </div>
+
+      <!-- ==================== API: 配置选项 ==================== -->
+      <div class="section" id="api-options">
+        <h2>配置选项</h2>
+
+        <h3>基础配置</h3>
+        <table class="param-table">
+          <thead><tr><th>参数</th><th>类型</th><th>默认值</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr><td><code>useCanvasRender</code></td><td><span class="type-tag">boolean/string</span></td><td><span class="default-tag">true</span></td><td>PDF 渲染模式</td></tr>
+            <tr><td><code>isConfignFileKeyName</code></td><td><span class="type-tag">boolean</span></td><td><span class="default-tag">false</span></td><td>是否转换文件键名</td></tr>
+            <tr><td><code>pdfJsPath</code></td><td><span class="type-tag">string</span></td><td><span class="default-tag">''</span></td><td>PDF.js 主模块加载地址</td></tr>
+            <tr><td><code>pdfWorkerPath</code></td><td><span class="type-tag">string</span></td><td><span class="default-tag">''</span></td><td>PDF.js Worker 地址</td></tr>
+            <tr><td><code>allowLinksAndImages</code></td><td><span class="type-tag">boolean</span></td><td><span class="default-tag">false</span></td><td>是否允许 a/img 标签</td></tr>
+          </tbody>
+        </table>
+
+        <h3>强制阅读配置 (coerceReadList)</h3>
+        <table class="param-table">
+          <thead><tr><th>参数</th><th>类型</th><th>默认值</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr><td><code>titleText</code></td><td><span class="type-tag">string</span></td><td><span class="default-tag">"请阅读并同意以下文件"</span></td><td>弹窗标题</td></tr>
+            <tr><td><code>tipsText</code></td><td><span class="type-tag">string</span></td><td><span class="default-tag">""</span></td><td>顶部提示信息</td></tr>
+            <tr><td><code>fileList</code></td><td><span class="type-tag">Array</span></td><td><span class="default-tag">[]</span></td><td>文件列表</td></tr>
+            <tr><td><code>btnArr</code></td><td><span class="type-tag">Array</span></td><td><span class="default-tag">["同意并继续"]</span></td><td>按钮文字</td></tr>
+            <tr><td><code>showProgressInButton</code></td><td><span class="type-tag">boolean</span></td><td><span class="default-tag">false</span></td><td>按钮显示进度</td></tr>
+            <tr><td><code>delayConfig</code></td><td><span class="type-tag">Object</span></td><td><span class="default-tag">undefined</span></td><td>延迟配置</td></tr>
+            <tr><td><code>coerceCallBack</code></td><td><span class="type-tag">Function</span></td><td><span class="default-tag">[]</span></td><td>按钮回调</td></tr>
+            <tr><td><code>enableTabMode</code></td><td><span class="type-tag">boolean</span></td><td><span class="default-tag">false</span></td><td>启用 Tab 模式</td></tr>
+            <tr><td><code>tabButtonLinkMode</code></td><td><span class="type-tag">string</span></td><td><span class="default-tag">"linked"</span></td><td>Tab 按钮联动模式</td></tr>
+            <tr><td><code>tabStyle</code></td><td><span class="type-tag">Object</span></td><td><span class="default-tag">{}</span></td><td>Tab 样式</td></tr>
+            <tr><td><code>editableArea</code></td><td><span class="type-tag">Object</span></td><td><span class="default-tag">undefined</span></td><td>文本区配置</td></tr>
+            <tr><td><code>onTabChange</code></td><td><span class="type-tag">Function</span></td><td><span class="default-tag">undefined</span></td><td>Tab 切换回调</td></tr>
+          </tbody>
+        </table>
+
+        <h3>文件列表配置 (listObj)</h3>
+        <table class="param-table">
+          <thead><tr><th>参数</th><th>类型</th><th>默认值</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr><td><code>listId</code></td><td><span class="type-tag">string</span></td><td><span class="default-tag">""</span></td><td>列表容器 ID</td></tr>
+            <tr><td><code>fileList</code></td><td><span class="type-tag">Array</span></td><td><span class="default-tag">[]</span></td><td>文件列表</td></tr>
+            <tr><td><code>fileStyle</code></td><td><span class="type-tag">Object</span></td><td><span class="default-tag">{}</span></td><td>文件样式</td></tr>
+            <tr><td><code>isCheckButton</code></td><td><span class="type-tag">boolean</span></td><td><span class="default-tag">false</span></td><td>显示复选框</td></tr>
+            <tr><td><code>checkCallBack</code></td><td><span class="type-tag">Function</span></td><td><span class="default-tag">() =&gt; {}</span></td><td>复选框回调</td></tr>
+            <tr><td><code>listText</code></td><td><span class="type-tag">string</span></td><td><span class="default-tag">"更多详情请阅读"</span></td><td>列表文本</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ==================== API: 实例方法 ==================== -->
+      <div class="section" id="api-methods">
+        <h2>实例方法</h2>
+        <table class="param-table">
+          <thead><tr><th>方法</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr><td><code>loadFile(fileOrPath, title?)</code></td><td>加载文件，支持路径字符串或文件对象</td></tr>
+            <tr><td><code>openCoerceReadPopup()</code></td><td>打开强制阅读弹窗</td></tr>
+            <tr><td><code>clearPdfCache()</code></td><td>清除 PDF 缓存</td></tr>
+            <tr><td><code>destroy()</code></td><td>销毁实例，清理资源</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ==================== API: 控制对象 ==================== -->
+      <div class="section" id="api-control">
+        <h2>控制对象</h2>
+        <p>在 <code>coerceCallBack</code> 回调中接收的 <code>control</code> 对象，提供以下方法：</p>
+        <table class="param-table">
+          <thead><tr><th>方法</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr><td><code>control.next()</code></td><td>下一个文件</td></tr>
+            <tr><td><code>control.prev()</code></td><td>上一个文件</td></tr>
+            <tr><td><code>control.close()</code></td><td>关闭弹窗</td></tr>
+            <tr><td><code>control.goTo(index)</code></td><td>跳转到指定索引</td></tr>
+            <tr><td><code>control.isLastFile()</code></td><td>是否为最后一个文件</td></tr>
+            <tr><td><code>control.getCurrentIndex()</code></td><td>获取当前索引</td></tr>
+            <tr><td><code>control.getFileList()</code></td><td>获取文件列表</td></tr>
+            <tr><td><code>control.setButtonTitles(titles)</code></td><td>设置按钮标题</td></tr>
+            <tr><td><code>control.setCheckboxChecked(checked)</code></td><td>设置复选框状态</td></tr>
+            <tr><td><code>control.isCheckboxChecked()</code></td><td>获取复选框状态</td></tr>
+            <tr><td><code>control.getVisitedIndices()</code></td><td>获取已访问的索引列表</td></tr>
+            <tr><td><code>control.switchTab(index)</code></td><td>切换到指定 Tab</td></tr>
+            <tr><td><code>control.getCurrentTabIndex()</code></td><td>获取当前 Tab 索引</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </main>
+
+  <script type="module">
+    import FilePreview from '/dist/ReadFilePopupMobile.es.js';
+    window.FilePreview = FilePreview;
+  </script>
+
+  <script>
+    var pdfUrl = 'https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf';
+
+    // ===== Mobile menu toggle =====
+    document.getElementById('menuToggle').addEventListener('click', function() {
+      document.getElementById('sidebar').classList.toggle('open');
+    });
+
+    // ===== Sidebar active tracking =====
+    var sections = document.querySelectorAll('.section[id]');
+    var navLinks = document.querySelectorAll('.sidebar a');
+
+    function updateActiveNav() {
+      var scrollPos = window.scrollY + 100;
+      var current = '';
+      sections.forEach(function(section) {
+        if (section.offsetTop <= scrollPos) {
+          current = section.id;
+        }
+      });
+      navLinks.forEach(function(link) {
+        link.classList.toggle('active', link.getAttribute('href') === '#' + current);
+      });
+    }
+
+    window.addEventListener('scroll', updateActiveNav);
+    updateActiveNav();
+
+    navLinks.forEach(function(link) {
+      link.addEventListener('click', function() {
+        document.getElementById('sidebar').classList.remove('open');
+      });
+    });
+
+    // ===== Copy code =====
+    function copyCode(btn) {
+      var codeBlock = btn.closest('.code-block');
+      var code = codeBlock.querySelector('code').textContent;
+      navigator.clipboard.writeText(code).then(function() {
+        btn.textContent = '已复制!';
+        btn.classList.add('copied');
+        setTimeout(function() {
+          btn.textContent = '复制';
+          btn.classList.remove('copied');
+        }, 2000);
+      });
+    }
+
+    // ===== Close preview =====
+    function closePreview(id) {
+      var area = document.getElementById(id);
+      area.classList.remove('visible');
+      area.querySelector('iframe').srcdoc = '';
+    }
+
+    // ===== Run code =====
+    function runCode(btn) {
+      var codeBlock = btn.closest('.code-block');
+      var codeEl = codeBlock.querySelector('code');
+      var code = codeEl.textContent;
+      var previewArea = codeBlock.nextElementSibling;
+
+      if (!previewArea || !previewArea.classList.contains('preview-area')) {
+        previewArea = codeBlock.parentElement.querySelector('.preview-area');
+      }
+
+      if (!previewArea) return;
+
+      var iframe = previewArea.querySelector('iframe');
+      var isFileList = code.indexOf('isDrawFileList') !== -1;
+      var isHtml = code.indexOf('&lt;') !== -1 || code.indexOf('<div') !== -1 || code.indexOf('<script') !== -1;
+
+      var iframeHtml;
+
+      if (isFileList) {
+        iframeHtml = [
+          '<!DOCTYPE html><html><head><meta charset="UTF-8">',
+          '<meta name="viewport" content="width=device-width, initial-scale=1">',
+          '<style>',
+          'body { font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; padding: 20px; background: #f5f7fa; margin: 0; }',
+          '#fileList { max-width: 400px; margin: 0 auto; padding: 15px; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }',
+          '</style></head><body>',
+          '<div id="fileList"></div>',
+          '<script type="module">',
+          'import FilePreview from "/dist/ReadFilePopupMobile.es.js";',
+          'window.FilePreview = FilePreview;',
+          'try {',
+          code,
+          '} catch(e) { console.error(e); alert("代码错误: " + e.message); }',
+          '<\/script>',
+          '</body></html>'
+        ].join('');
+      } else {
+        var wrappedCode = code;
+        if (code.indexOf('openCoerceReadPopup') !== -1) {
+          wrappedCode = code;
+        } else if (code.indexOf('loadFile') !== -1) {
+          wrappedCode = 'var preview;\ntry {\n' + code + '\n} catch(e) { alert("代码错误: " + e.message); }';
+        }
+
+        iframeHtml = [
+          '<!DOCTYPE html><html><head><meta charset="UTF-8">',
+          '<meta name="viewport" content="width=device-width, initial-scale=1">',
+          '<style>',
+          'body { font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; background: #f5f7fa; }',
+          '.trigger-btn { padding: 14px 28px; font-size: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); }',
+          '.trigger-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5); }',
+          '.tip { margin-top: 16px; color: #666; font-size: 13px; }',
+          '</style></head><body>',
+          '<button class="trigger-btn" id="triggerBtn">点击打开</button>',
+          '<p class="tip">点击按钮查看效果</p>',
+          '<script type="module">',
+          'import FilePreview from "/dist/ReadFilePopupMobile.es.js";',
+          'window.FilePreview = FilePreview;',
+          'document.getElementById("triggerBtn").addEventListener("click", function() {',
+          '  try {',
+          '    ' + wrappedCode,
+          '  } catch(e) {',
+          '    console.error(e);',
+          '    alert("代码错误: " + e.message);',
+          '  }',
+          '});',
+          'setTimeout(function() { document.getElementById("triggerBtn").click(); }, 400);',
+          '<\/script>',
+          '</body></html>'
+        ].join('');
+      }
+
+      previewArea.classList.add('visible');
+      iframe.srcdoc = iframeHtml;
+
+      previewArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // ===== Simple syntax highlight =====
+    function highlightCode() {
+      document.querySelectorAll('.code-block code').forEach(function(el) {
+        var html = el.innerHTML;
+
+        html = html.replace(/(\/\/.*$)/gm, '<span class="hljs-comment">$1</span>');
+        html = html.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="hljs-comment">$1</span>');
+
+        html = html.replace(/\b(const|let|var|function|return|if|else|new|import|from|export|default|try|catch|throw|typeof|instanceof|class|extends|this|true|false|null|undefined)\b/g, '<span class="hljs-keyword">$1</span>');
+
+        html = html.replace(/('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*`)/g, '<span class="hljs-string">$1</span>');
+
+        html = html.replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="hljs-number">$1</span>');
+
+        el.innerHTML = html;
+      });
+    }
+
+    highlightCode();
+  </script>
+</body>
+
+</html>

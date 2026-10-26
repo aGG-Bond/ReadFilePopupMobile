@@ -1,6 +1,9 @@
 # ReadFilePopupMobile.js
 
 移动端文件预览组件，支持 PDF、富文本、引用文本等多种文件类型。
+
+> **注意：** 本插件仅提供 ES Module 格式（`import` 引入），不支持 UMD/CommonJS。
+
 ## 功能特性
 
 - 📄 支持多种文件类型预览（PDF、富文本、引用文本）
@@ -9,7 +12,7 @@
 - 🔧 灵活的配置选项
 - 🎨 自定义样式支持
 - 🖼️ Canvas PDF 渲染，适合移动端预览
-- 📦 PDF.js 主文件和 Worker 完全内置，零外部依赖
+- 📦 PDF.js 通过动态 `import()` 从 CDN 加载，支持自定义版本和地址
 
 ## 安全特性
 
@@ -22,11 +25,6 @@
 
 ```bash
 npm install @aggbond/my-file-preview-mobile
-```
-
-或通过 CDN：
-```html
-<script src="https://cdn.jsdelivr.net/npm/@aggbond/my-file-preview-mobile@latest/dist/ReadFilePopupMobile.umd.min.js"></script>
 ```
 
 ## 快速开始
@@ -116,8 +114,95 @@ const preview = new FilePreview({
 | `control.goTo(index)` | 跳转到指定索引 |
 | `control.isLastFile()` | 是否为最后一个文件 |
 | `control.getCurrentIndex()` | 获取当前索引 |
+| `control.getFileList()` | 获取文件列表 |
 | `control.setButtonTitles(titles)` | 设置按钮标题 |
 | `control.setCheckboxChecked(checked)` | 设置复选框状态 |
+| `control.isCheckboxChecked()` | 获取复选框状态 |
+| `control.getVisitedIndices()` | 获取已访问的索引列表 |
+| `control.switchTab(index)` | 切换到指定 Tab（Tab 模式下） |
+| `control.getCurrentTabIndex()` | 获取当前 Tab 索引（Tab 模式下） |
+
+### Tab 切换模式
+
+启用后，多文件以顶部 Tab 栏形式切换展示，而非逐个翻页：
+
+```js
+const preview = new FilePreview({
+  coerceReadList: {
+    titleText: "请阅读以下文件",
+    fileList: [
+      { name: "用户协议", file_type: 1, content_text: "<h2>用户协议</h2><p>协议内容...</p>" },
+      { name: "隐私政策", file_type: 1, content_text: "<h2>隐私政策</h2><p>政策内容...</p>" },
+      { name: "服务条款", file_type: 1, content_text: "<h2>服务条款</h2><p>条款内容...</p>" }
+    ],
+    btnArr: ["同意", "拒绝"],
+    enableTabMode: true,
+    coerceCallBack: (control, buttonIndex) => {
+      if (buttonIndex === 0) {
+        alert("已同意！");
+        control.close();
+      } else {
+        control.close();
+      }
+    }
+  }
+});
+preview.openCoerceReadPopup();
+```
+
+**Tab 按钮联动模式 (tabButtonLinkMode)：**
+
+| 值 | 描述 |
+|------|------|
+| `"linked"` | 默认值。按钮和 Tab 都能切换文件 |
+| `"noLinked"` | 只有 Tab 能切换文件，按钮仅触发回调 |
+
+### 自定义 Tab 样式 (tabStyle)
+
+```js
+tabStyle: {
+  indicatorColor: '#FF6B00',      // 底部指示条颜色
+  tabMaxWidth: '120px',           // Tab 最大宽度
+  tabMinWidth: '80px',            // Tab 最小宽度
+  tabTextStyle: { color: '#999' },           // Tab 文字样式
+  tabTextActiveStyle: { color: '#FF6B00' },  // 选中 Tab 文字样式
+  tabBarStyle: { background: '#fff' },       // Tab 栏容器样式
+  tabItemStyle: { padding: '10px' },         // Tab 项样式
+  tabItemActiveStyle: { fontWeight: 'bold' } // 选中 Tab 项样式
+}
+```
+
+### 可编辑文本区 (editableArea)
+
+在 Tab 模式下，支持为每个 Tab 或所有 Tab 显示独立的提示文本：
+
+```js
+editableArea: {
+  enabled: true,
+  mode: 'per-tab',    // 'per-tab' 每个 Tab 独立文本 / 'shared' 所有 Tab 共享文本
+  texts: [            // per-tab 模式：每个 Tab 对应的文本
+    '请仔细阅读用户协议，如有疑问请联系客服。',
+    '我们重视您的隐私保护，详情请查看完整政策。'
+  ],
+  text: '共享提示文本',  // shared 模式：所有 Tab 显示的文本
+  containerStyle: {      // 文本区容器样式
+    background: '#f0f9ff',
+    borderTop: '2px solid #1890ff'
+  },
+  textStyle: {           // 文本样式
+    color: '#FF6B00',
+    fontWeight: 'bold'
+  }
+}
+```
+
+### Tab 切换回调 (onTabChange)
+
+```js
+onTabChange: ({ fromIndex, toIndex, control }) => {
+  console.log(`从 Tab ${fromIndex} 切换到 Tab ${toIndex}`);
+}
+```
 
 ### 文件列表
 
@@ -150,8 +235,17 @@ new FilePreview({ useCanvasRender: false });
 new FilePreview({ useCanvasRender: 'auto' });
 ```
 
-如果你需要兼容旧版 iOS（如 iOS 18 以下），建议显式配置 PDF.js 的主模块和 Worker 版本：
+### PDF.js 加载机制
+
+本插件**不打包 PDF.js**，而是在运行时通过动态 `import()` 从 CDN 加载。默认使用 `pdfjs-dist@6.2.108`，你可以通过 `pdfJsPath` 和 `pdfWorkerPath` 指定任意版本。
+
+> **注意：** 本插件仅提供 ES Module 格式，PDF.js 通过动态 `import()` 加载 `.mjs` 文件。
+
 ```js
+// 默认行为：自动从 CDN 加载 pdfjs-dist@6.2.108
+new FilePreview({ useCanvasRender: true });
+
+// 兼容旧版 iOS（如 iOS 18 以下），使用低版本 PDF.js
 const isLegacyIOS = /iPhone|iPad/i.test(navigator.userAgent) && !(/OS 18|OS 19|OS 20/i.test(navigator.userAgent));
 
 new FilePreview({
@@ -165,28 +259,85 @@ new FilePreview({
 });
 ```
 
-### 外置 PDF.js 下载地址
+> **提示**：当你指定了 `pdfJsPath` 但未指定 `pdfWorkerPath` 时，插件会自动从 `pdfJsPath` 中提取版本号来拼接对应的 Worker 地址。
 
-如果你想自己托管或直接使用 CDN，可以使用下面这些地址：
+### 可用的 PDF.js 地址
 
 ```js
-// legacy（兼容老 Safari / iOS 18 以下）
+// v3 legacy（最低 iOS 10.3+，推荐用于老设备，仅 .js 格式）
+const v3PdfJsPath = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.js';
+const v3PdfWorkerPath = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.worker.min.js';
+
+// v4 legacy（最低 iOS 16.4+）
 const legacyPdfJsPath = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.mjs';
 const legacyPdfWorkerPath = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.worker.min.mjs';
 
-// modern（当前默认推荐）
+// v6 modern（最低 iOS 17+，当前默认推荐）
 const modernPdfJsPath = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/legacy/build/pdf.mjs';
 const modernPdfWorkerPath = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/legacy/build/pdf.worker.min.mjs';
 ```
 
-如果你部署在自己的站点，也可以直接从本地 `node_modules` 目录引用：
+如果你自己托管 PDF.js，也可以从本地路径加载：
 
 ```js
 const localPdfJsPath = '/node_modules/pdfjs-dist/legacy/build/pdf.mjs';
 const localPdfWorkerPath = '/node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs';
 ```
 
-> 这个插件不会在模块初始化时强制静态引入 PDF.js；你可以在业务层按设备或运行环境选择对应版本。若不设置 `pdfJsPath`，默认会继续走内置 `pdfjs-dist` 6.x 版本。
+### PDF.js 版本兼容性
+
+| PDF.js 版本 | 最低 Safari | 最低 iOS | 文件路径 | 说明 |
+|------------|------------|---------|---------|------|
+| v3.x (3.11.174) legacy | Safari 10+ | iOS 10.3+ | `legacy/build/pdf.js` | 仅 UMD 格式 |
+| v4.x (4.10.38) legacy | Safari 16.4+ | iOS 16.4+ | `legacy/build/pdf.mjs` | 仅 ESM 格式 |
+| v6.x (6.2.108) | Safari 17+ | iOS 17+ | `legacy/build/pdf.mjs` | 默认版本 |
+
+> **版本差异说明：**
+> - **3.x**：仅 `.js`（UMD）格式，必须使用 `legacy/` 路径才能兼容 iOS 10-13
+> - **4.x / 6.x**：仅 `.mjs`（ESM）格式，有 `legacy/` 目录
+> - 插件会自动根据版本号推导 Worker 文件地址，无需手动处理
+
+> **注意**：插件自身代码已编译为 ES2015（`target: 'es2015'`），兼容 iOS 10.3+。但 PDF.js 库的兼容性取决于你选择的版本。
+
+### build/ 与 legacy/build/ 的区别
+
+PDF.js 提供两个构建版本：
+
+| 特性 | `build/` | `legacy/build/` |
+|------|---------|----------------|
+| 文件大小 | 较小 | 较大（约 20%） |
+| 目标环境 | 现代浏览器 | 旧浏览器 |
+| 包含 polyfill | 否 | 是 |
+| 语法降级 | 否 | 是（经 Babel 转译） |
+
+**v6.x 的 build/ 和 legacy/build/ 最低支持版本相同**（都是 Safari 17+ / iOS 17+），因为 v6.x 使用了 `Iterator` 等新特性，即使 legacy 版本也无法完全转译。
+
+**建议**：优先使用 `legacy/build/` 路径，它包含更多兼容性代码，在相同最低版本下更稳定。
+
+### 版本选择建议
+
+根据用户实际运行的 iOS 版本选择：
+
+| 用户 iOS 版本 | Safari 版本 | 推荐 PDF.js 版本 | 路径 |
+|--------------|------------|-----------------|------|
+| iOS 10.3 ~ 13.x | Safari 10 ~ 13 | v3.x legacy | `legacy/build/pdf.js` |
+| iOS 14 ~ 16.3 | Safari 14 ~ 16.3 | v3.x legacy | `legacy/build/pdf.js` |
+| iOS 16.4 ~ 16.x | Safari 16.4 ~ 16.x | v4.x legacy | `legacy/build/pdf.mjs` |
+| iOS 17+ | Safari 17+ | v6.x（默认） | `legacy/build/pdf.mjs` |
+
+**全球 iOS 版本分布（2026年9月，数据来源：StatCounter）：**
+
+| 版本范围 | 市场份额 | 对应机型 |
+|---------|---------|---------|
+| iOS 17+ | ~70% | iPhone 15/16 系列 |
+| iOS 16.x | ~12% | iPhone 8/X ~ iPhone 14 |
+| iOS 14-15 | ~10% | iPhone XR/XS ~ iPhone 13 |
+| iOS 13 及以下 | ~8% | iPhone 6S ~ iPhone 11 |
+
+**选择策略：**
+- **仅需 iOS 17+**：使用默认 v6.x
+- **需要兼容 iOS 16.4+**：使用 v4.x legacy
+- **需要兼容 iOS 10.3+**：使用 v3.x legacy（推荐，覆盖约 92% 用户）
 
 ## 配置选项
 
@@ -196,6 +347,8 @@ const localPdfWorkerPath = '/node_modules/pdfjs-dist/legacy/build/pdf.worker.min
 |------|------|--------|------|
 | `useCanvasRender` | boolean/string | `true` | PDF 渲染模式：`true` Canvas / `false` iframe / `"auto"` 自动检测 |
 | `isConfignFileKeyName` | boolean | `false` | 是否转换文件键名 |
+| `pdfJsPath` | string | `''` (CDN 默认) | PDF.js 主模块加载地址，默认从 CDN 加载 6.2.108 版本 |
+| `pdfWorkerPath` | string | `''` (自动推导) | PDF.js Worker 地址，未设置时自动从 `pdfJsPath` 推导版本 |
 
 ### 安全配置
 
@@ -240,9 +393,15 @@ new FilePreview({ allowLinksAndImages: true });
 | `fileList` | Array | `[]` | 文件列表 |
 | `btnArr` | Array | `["同意并继续"]` | 按钮文字 |
 | `btnStyle` | Array | `[]` | 按钮样式 |
+| `btnBoxStyle` | Object | `{}` | 按钮容器样式 |
 | `showProgressInButton` | boolean/number | `false` | 在按钮上显示进度（true 或按钮索引） |
 | `delayConfig` | Object | `undefined` | 延迟配置 |
 | `coerceCallBack` | Array/Function | `[]` | 按钮回调 |
+| `enableTabMode` | boolean | `false` | 是否启用 Tab 切换模式 |
+| `tabButtonLinkMode` | string | `"linked"` | Tab 按钮联动模式：`"linked"` / `"noLinked"` |
+| `tabStyle` | Object | `{}` | Tab 样式配置 |
+| `editableArea` | Object | `undefined` | 可编辑文本区配置 |
+| `onTabChange` | Function | `undefined` | Tab 切换回调 |
 
 **延迟配置 (delayConfig)：**
 ```js
@@ -285,14 +444,17 @@ fileKeyNameConfign: {
 
 ## 示例
 
-更多使用示例请参考 [demo/test.html](https://github.com/aGG-Bond/ReadFilePopupMobile/blame/main/demo/test.html)，包含 PDF 渲染模式、文件预览、强制阅读、延迟配置、提示信息、PDF 缓存、文件列表等完整功能演示。
+- API 文档：[demo/docs.html](https://github.com/aGG-Bond/ReadFilePopupMobile/blob/main/demo/docs.html) - 完整的 API 文档，包含可复制代码和实时预览
+- 交互式 Playground：[demo/playground.html](https://github.com/aGG-Bond/ReadFilePopupMobile/blob/main/demo/playground.html) - 在线编辑代码，实时预览效果
+- 功能测试：[demo/test.html](https://github.com/aGG-Bond/ReadFilePopupMobile/blob/main/demo/test.html) - 包含 PDF 渲染模式、文件预览、强制阅读、延迟配置、提示信息、PDF 缓存、文件列表等完整功能演示
 
 ## 注意事项
 
+- 本插件仅提供 ES Module 格式，需要在支持 `import` 的环境中使用
 - Canvas 模式要求 PDF 地址允许跨域或与页面同源
 - 页面关闭时自动清理缓存，也可调用 `destroy()` 手动清理
-- UMD 版本已打包所有依赖，开箱即用
-- PDF Worker 已内联到主文件中，无需额外配置外部 Worker 文件
+- PDF.js 通过动态 `import()` 从 CDN 加载，需要网络连接；如需离线使用，请自行托管 PDF.js 文件并通过 `pdfJsPath` / `pdfWorkerPath` 指定
+- 若不设置 `pdfJsPath`，默认从 jsDelivr CDN 加载 `pdfjs-dist@6.2.108`
 
 ## 许可协议
 
